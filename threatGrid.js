@@ -6,41 +6,69 @@ let showThreatGrid = true
 
 
 
-function getThreatLevel(x, y, radius, monsters)
-{
+function getTerrainInStraightLine(p1, p2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const distance = dw.distance(p1, p2);
+    const numSteps = 10
+
+    const terrainArray = [];
+
+    for (let i = 0; i <= numSteps; i++) {
+        const x = p1.x + (dx * (i / numSteps));
+        const y = p1.y + (dy * (i / numSteps));
+
+        const terrain = dw.getTerrainAt({ l: p1.l, x, y });
+        terrainArray.push(terrain);
+    }
+
+    //   console.log(terrainArray);
+
+    return terrainArray;
+}
+
+function hasLineOfSight(target, from = dw.character) {
+    const straightPath = getTerrainInStraightLine(from, target);
+    return !straightPath.some((x) => x > 0 /* Air / Walkable */);
+}
+
+
+function getThreatLevel(x, y, radius, monsters) {
     // monsters in the area that we can beat reduce threat
     // scary monsters that will kill us increase threat
 
-    let nearMonsters = monsters.filter(m => dw.distance({x:x,y:y}, m) < radius)
+    let nearMonsters = monsters.filter(m => dw.distance({ x: x, y: y }, m) < radius)
 
     let threatLevel = 50
 
-    for(let monster of nearMonsters)
-    {
-        let dist = dw.distance({x:x,y:y}, monster)
-        if(canFightList.includes(monster.md) && monster.hpMax < dw.c.hpMax + 200)
-        {
+    for (let monster of nearMonsters) {
+        let dist = dw.distance({ x: x, y: y }, monster)
+        if (canFightList.includes(monster.md) && monster.hpMax < dw.c.hpMax + 200) {
             //console.log(dist)
             let delta = -10
 
             // In range of a range we can fight is good
-            if(dist < 3)
-            {
-                delta -= (30 * (dist /3))
+            if (dist < 3) {
+                delta -= (30 * (dist / 3))
             }
-            
+
             // Too close to a monster we can fight is bad
-            if(dist < 2)
-            {
+            if (dist < 2) {
                 delta += 50
+            }
+
+            if (!hasLineOfSight({ x: x, y: y })) {
+                delta = 50
+            }
+
+            if (!hasLineOfSight({ x: x, y: y }, monster)) {
+                delta = 50
             }
 
             threatLevel += delta
         }
-        else
-        {
-            if(dist < 6)
-            {
+        else {
+            if (dist < 6) {
                 threatLevel += 50
             }
         }
