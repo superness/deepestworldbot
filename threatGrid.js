@@ -35,18 +35,26 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
 }
 
 
+
 function getThreatLevel(x, y, radius, monsters, nonTraversableEntities) {
     // monsters in the area that we can beat reduce threat
     // scary monsters that will kill us increase threat
 
     let nearMonsters = monsters.filter(m => dw.distance({ x: x, y: y }, m) < radius)
+    let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
 
     let threatLevel = 50
 
     for (let monster of nearMonsters) {
         let dist = dw.distance({ x: x, y: y }, monster)
         if (canFightList.includes(monster.md) && monster.hpMax < dw.c.hpMax + 200) {
-            //console.log(dist)
+
+            if (target && monster.id != target.id && dist < 3)
+            {
+                threatLevel += 50
+                continue
+            }
+
             let delta = -10
 
             // In range of a range we can fight is good
