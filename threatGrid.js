@@ -5,8 +5,7 @@ let showThreatGrid = true
 
 
 
-
-function getTerrainInStraightLine(p1, p2) {
+function getTerrainInStraightLine(p1, p2, nonTraversableEntities) {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const distance = dw.distance(p1, p2);
@@ -18,22 +17,25 @@ function getTerrainInStraightLine(p1, p2) {
         const x = p1.x + (dx * (i / numSteps));
         const y = p1.y + (dy * (i / numSteps));
 
-        const terrain = dw.getTerrainAt({ l: p1.l, x, y });
+        let terrain = dw.getTerrainAt({ l: p1.l, x, y });
+
+        if (nonTraversableEntities.filter(e => dw.distance({ x: x, y: y }, e) < 0.3).length > 0) {
+            terrain = 99
+        }
+
         terrainArray.push(terrain);
     }
-
-    //   console.log(terrainArray);
 
     return terrainArray;
 }
 
-function hasLineOfSight(target, from = dw.character) {
-    const straightPath = getTerrainInStraightLine(from, target);
+function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []) {
+    const straightPath = getTerrainInStraightLine(from, target, nonTraversableEntities);
     return !straightPath.some((x) => x > 0 /* Air / Walkable */);
 }
 
 
-function getThreatLevel(x, y, radius, monsters) {
+function getThreatLevel(x, y, radius, monsters, nonTraversableEntities) {
     // monsters in the area that we can beat reduce threat
     // scary monsters that will kill us increase threat
 
@@ -57,11 +59,11 @@ function getThreatLevel(x, y, radius, monsters) {
                 delta += 50
             }
 
-            if (!hasLineOfSight({ x: x, y: y })) {
+            if (!hasLineOfSight({ x: x, y: y }, dw.c, nonTraversableEntities)) {
                 delta = 50
             }
 
-            if (!hasLineOfSight({ x: x, y: y }, monster)) {
+            if (!hasLineOfSight({ x: x, y: y }, monster, nonTraversableEntities)) {
                 delta = 50
             }
 
@@ -87,12 +89,10 @@ const gridArrWidth = 50
 const gridArrHeight = 50
 
 let threatGrid = new Array(gridArrWidth);
-for (let i = 0; i < threatGrid.length; ++i)
-{
+for (let i = 0; i < threatGrid.length; ++i) {
     threatGrid[i] = new Array(gridArrHeight)
 
-    for(let j = 0; j < threatGrid[i].length; ++j)
-    {
+    for (let j = 0; j < threatGrid[i].length; ++j) {
         threatGrid[i][j] = {}
     }
 }
@@ -102,21 +102,21 @@ setInterval(function () {
 
     let pxLeft = dw.c.x - (gridWidth / 2)
     let pxBottom = dw.c.y - (gridHeight / 2)
-    
+
     let pxdx = gridWidth / gridArrWidth
     let pxdy = gridHeight / gridArrHeight
+
 
     // From dw.c.x - w/2 to dw.c.x + w/2
     // set threat level near the that point 
     let monsters = dw.findEntities(e => e.ai)
+    let nonTraversableEntities = dw.findEntities(e => !e.ai && !e.player)
 
-    for(let i = 0; i < gridArrWidth; ++i)
-    {
-        for(let j = 0; j < gridArrHeight; ++j)
-        {
+    for (let i = 0; i < gridArrWidth; ++i) {
+        for (let j = 0; j < gridArrHeight; ++j) {
             let x = pxLeft + i * pxdx - pxdx / 2
             let y = pxBottom + j * pxdy - pxdy / 2
-            threatGrid[i][j] = {x:x, y:y, threat:getThreatLevel(x, y, 5, monsters)}
+            threatGrid[i][j] = { x: x, y: y, threat: getThreatLevel(x, y, 5, monsters, nonTraversableEntities) }
         }
     }
 }, 100)
@@ -124,22 +124,18 @@ setInterval(function () {
 let moveToSpot = {}
 
 
-setInterval(function(){
+setInterval(function () {
     // find the best spot to move to
     let goodSpots = []
-    for(let i = 0; i < gridArrWidth; ++i)
-    {
-        for(let j = 0; j < gridArrHeight; ++j)
-        {
-            if(threatGrid[i][j].threat < 20)
-            {
+    for (let i = 0; i < gridArrWidth; ++i) {
+        for (let j = 0; j < gridArrHeight; ++j) {
+            if (threatGrid[i][j].threat < 20) {
                 goodSpots.push(threatGrid[i][j])
             }
         }
     }
 
-    goodSpots.sort(function(a, b)
-    {
+    goodSpots.sort(function (a, b) {
         let da = dw.distance(dw.c, a)
         let db = dw.distance(dw.c, b)
 
@@ -182,14 +178,13 @@ setInterval(function(){
 
 // UI 
 dw.on("drawEnd", (ctx, cx, cy) => {
-    if(!showThreatGrid) 
-    {
+    if (!showThreatGrid) {
         return
     }
 
     // threat grid
-    let pxLeft = ctx.canvas.width / 2 - (screenGridWidth / 2) 
-    let pxTop = ctx.canvas.height / 2 - (screenGridHeight / 2) 
+    let pxLeft = ctx.canvas.width / 2 - (screenGridWidth / 2)
+    let pxTop = ctx.canvas.height / 2 - (screenGridHeight / 2)
 
     let pxdx = screenGridWidth / gridArrWidth
     let pxdy = screenGridHeight / gridArrHeight
@@ -197,19 +192,16 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 
     let squareWidth = Math.max(pxdx, pxdy)
 
-    for(let i = 0; i < gridArrWidth; ++i)
-    {
-        for(let j = 0; j < gridArrHeight; ++j)
-        {
+    for (let i = 0; i < gridArrWidth; ++i) {
+        for (let j = 0; j < gridArrHeight; ++j) {
             let threatLevel = Math.max(Math.min(threatGrid[i][j].threat, 100), 0)
             let alpha = threatLevel / 100.0 * 0.3
-            ctx.fillStyle =  `rgb(255, 0, 0, ${alpha})`
+            ctx.fillStyle = `rgb(255, 0, 0, ${alpha})`
 
-            if(threatGrid[i][j] == moveToSpot)
-            {
-                ctx.fillStyle =  `rgb(0, 255, 0, 0.5)`
+            if (threatGrid[i][j] == moveToSpot) {
+                ctx.fillStyle = `rgb(0, 255, 0, 0.5)`
             }
-            
+
             let x = pxLeft + i * pxdx - pxdx / 2
             let y = pxTop + j * pxdy - pxdy / 2
 
@@ -218,8 +210,8 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             ctx.fill()
 
             ctx.fillStyle = `rgb(0, 0, 0, 0.5)`
-            
+
             ctx.fillText(Number(threatGrid[i][j].threat).toFixed(), x + pxdx / 2, y + pxdy / 2)
         }
-    }    
+    }
 })
