@@ -2,6 +2,9 @@ let floatingText = []
 
 dw.on('hit', data => {
     for (let hit of data) {
+
+        if(!hit.amount) continue
+        
         // Add a floating text at the target for the amount
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
         let newText = { text: hit.amount, x: target.x, y: target.y, target: hit.target, life: 1.0, maxLife: 1.0 }
