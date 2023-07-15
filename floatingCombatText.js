@@ -4,14 +4,12 @@ dw.on('hit', data => {
     for (let hit of data) {
         // Add a floating text at the target for the amount
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
-        let newText = { text: hit.amount, x: target.x, y: target.y, target: hit.target, life: 2.0, maxLife: 2.0 }
+        let newText = { text: hit.amount, x: target.x, y: target.y, target: hit.target, life: 1.0, maxLife: 1.0 }
 
-        if(target.id == dw.c.id)
-        {
+        if (target.id == dw.c.id) {
             newText.x -= 0.2
         }
-        else
-        {
+        else {
             newText.x += 0.2
         }
 
@@ -56,25 +54,21 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             ctx.fillStyle = 'red'
         }
 
-        let fontSize = 16 + 22 * easeInOutElastic(text.life / text.maxLife)
+        let fontSize = 38 * combatTextTween(text.life / text.maxLife)
 
         ctx.font = `bold ${fontSize}px arial`;
         ctx.strokeText(text.text, x, y)
         ctx.fillText(text.text, x, y)
 
-        if (text.target == dw.c.id) {
-            text.y += 0.5 * seconds
-            text.x -= 0.3 * seconds
-        }
-        else {
-            text.y -= 0.5 * seconds
-            text.x += 0.3 * seconds
-        }
         text.life -= seconds
     }
 
     floatingText = floatingText.filter(t => t.life > 0)
 })
+
+function combatTextTween(x) {
+    return x * easeInOutElastic(x) + (1.0 - x) * easeInOutQuint(x)
+}
 
 function easeInOutElastic(x) {
     const c5 = (2 * Math.PI) / 4.5;
@@ -86,4 +80,8 @@ function easeInOutElastic(x) {
             : x < 0.5
                 ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
                 : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
+}
+
+function easeInOutQuint(x) {
+    return x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2;
 }
