@@ -35,7 +35,6 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     lastTextUpdate = curTextUpdate
 
     //console.log(`seconds between updates ${seconds}`)
-
     for (let text of floatingText) {
         if (text.life < 0) continue
 
@@ -54,11 +53,50 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             ctx.fillStyle = 'red'
         }
 
-        let fontSize = 38 * combatTextTween(text.life / text.maxLife)
+        let fontSize = 28 * combatTextTween(text.life / text.maxLife)
 
-        ctx.font = `bold ${fontSize}px arial`;
+        ctx.font = `bold ${fontSize}px arial`
         ctx.strokeText(text.text, x, y)
         ctx.fillText(text.text, x, y)
+
+        let textWidth = ctx.measureText(text.text).width
+
+        const offscreen = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height);
+        const offCtx = offscreen.getContext("2d")
+
+        const offscreen2 = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height);
+        const offCtx2 = offscreen2.getContext("2d")
+
+        offCtx.fillStyle = 'blue'
+        offCtx2.fillStyle = 'blue'
+
+        let squarePath = new Path2D();
+        squarePath.rect(x - textWidth / 2, y - fontSize * 0.2, textWidth, fontSize * 0.6)
+        squarePath.closePath()
+
+        // Set the clip to the square
+        offCtx.clip(squarePath)
+
+        offCtx.fillStyle = `rgb(245, 106, 32, 0.6)`
+        offCtx.font = `bold ${fontSize}px arial`
+        offCtx.fillText(text.text, x - textWidth / 2, y)
+
+        let squarePath2 = new Path2D();
+        squarePath2.rect(x - textWidth / 2, y - fontSize * 0.5, textWidth, fontSize)
+        squarePath2.closePath()
+
+        // Set the clip to the square
+        offCtx2.clip(squarePath2)
+
+        offCtx2.fillStyle = `rgb(245, 106, 32, 0.3)`
+        offCtx2.font = `bold ${fontSize}px arial`
+        offCtx2.fillText(text.text, x - textWidth / 2, y)
+
+        if(offCtx.canvas.width > 0 && offCtx.canvas.height > 0)
+        {
+            ctx.drawImage(offscreen2.transferToImageBitmap(), 0, 0)
+            ctx.drawImage(offscreen.transferToImageBitmap(), 0, 0)
+        }
 
         text.life -= seconds
     }
