@@ -48,7 +48,7 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
         // are positions to move to away from the blocking entity
         if(dw.distance(e, dw.c) < thickCheck)
         {
-            dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
+            let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
 
             let vecToEntity = { x: e.x - from.x, y: e.y - from.y }
             let vecToSpot = { x: target.x - from.x, y: target.y - from.y }
@@ -79,7 +79,7 @@ function hasLineOfSafety(target, from = dw.character) {
         // as dangerous and otherwise do nothing, so that there are grid spots available
         // that move away from the monster
         if (dw.distance(monster, dw.c) <= scaryMonsterRadius) {
-            dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
+            let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
 
             let vecToMonster = { x: monster.x - from.x, y: monster.y - from.y }
             let vecToSpot = { x: target.x - from.x, y: target.y - from.y }
