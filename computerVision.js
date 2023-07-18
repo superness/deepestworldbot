@@ -111,21 +111,20 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
 
                 let delta = -10
 
-                // In range of a range we can fight is good
-                if (dist < optimalMonsterRange) {
-                    delta -= (40 * (dist / optimalMonsterRange))
-                    if (spotType == 'open') {
-                        spotType = 'preference'
-                    }
-                }
                 // Too close to a monster we can fight is bad
-                else if (dist < 2 && optimalMonsterRange > 2) {
+                if (dist < 2 && optimalMonsterRange > 2) {
                     delta += 80 * (1 - (dist / optimalMonsterRange))
                     if (spotType == 'open') {
                         spotType = 'fallback'
                     }
                 }
-
+                // In range of a range we can fight is good
+                else if (dist < optimalMonsterRange) {
+                    delta -= (40 * (dist / optimalMonsterRange))
+                    if (spotType == 'open') {
+                        spotType = 'preference'
+                    }
+                }
 
                 if (dist < radius && !hasLineOfSight({ x: x, y: y }, monster, nonTraversableEntities)) {
                     delta += 100
