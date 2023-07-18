@@ -42,7 +42,7 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
         let thickCheck = terrainThickness
 
         // blocking entities treated as half as big as terrain
-        if (e.id) thickCheck = terrainThickness / 2
+        if (e.id) thickCheck = terrainThickness * 0.75
         if (distToSegment(e, from, target) < thickCheck) {
             return false
         }
@@ -161,7 +161,7 @@ for (let i = 0; i < visionGrid.length; ++i) {
 }
 
 function getNonTraversableEntities() {
-    let nonTraversableEntities = dw.findEntities(e => !e.ai && !e.player && !e.md.includes("rock") && !e.md.includes("portal"))
+    let nonTraversableEntities = dw.findEntities(e => !e.ai && !e.player && !e.ore && !e.md.includes("portal"))
 
     // walk thru chunks and add everything that is not 0
     let chunkPropertyKeys = Object.keys(dw.chunks).filter(k => k.startsWith(dw.c.l))
@@ -289,7 +289,7 @@ setInterval(function () {
         if (!bestSpot) {
             // A 50 value spot is neurtal or 'safe'
             // pick the furthest one we can see that is within our search radius
-            goodSpots = getGoodSpots(50).filter(p => dw.distance(p, dw.c) < searchOffset)
+            let goodSpots = getGoodSpots(50).filter(p => dw.distance(p, dw.c) < searchOffset)
             bestSpot = goodSpots.sort((a, b) => dw.distance(b, dw.c) - dw.distance(a, dw.c)).shift()
         }
     }
