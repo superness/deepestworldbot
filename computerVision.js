@@ -41,7 +41,7 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
     for (let e of nonTraversableEntities) {
         // blocking entities treated as smaller than terrain
         let thickCheck = terrainThickness
-        if (e.id) thickCheck = terrainThickness * 0.75
+        if (e.id) thickCheck = terrainThickness * 0.5
 
         // Similar to monsters, if we are standing in a non-traversable entity then 
         // only mark positions that move toward the entity as blocked so that there
