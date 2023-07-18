@@ -52,8 +52,7 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
 }
 
 // This algorithm creates a 'pill' shaped line between the character
-// and every hostile monster until that pill area includes a monster
-// if the pill ever includes a monster then it is not safe to move there
+// and the target if the pill includes a monster then it is not safe to move there
 // as it would cause us to move close enough to pull a monster
 function hasLineOfSafety(target, from = dw.character) {
     let hostlies = dw.findEntities(e => e.hostile && !isValidTarget(e))
