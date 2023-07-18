@@ -183,7 +183,7 @@ function getNonTraversableEntities() {
     for(let i = 0; i < count; ++i)
     {
         let e = nonTraversableEntities[i]
-        let duplicate = {x:e.x+terrainThickness/2, y:e.y, id:e.id}
+        let duplicate = {x:e.x+(8/96), y:e.y, id:e.id}
         nonTraversableEntities.push(duplicate)
     }
 
