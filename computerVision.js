@@ -368,16 +368,6 @@ setInterval(function () {
 
     optimalMonsterRange = skillUse.range
 
-    // If my target is too scary and we haven't started fighting yet
-    // then stay a little further away until we have regenerated some resources
-    // and our battle score allows us to fight the target
-    if (!isValidTarget(target) &&
-        target.hp == target.hpMax &&
-        target.targetId != dw.c.id) {
-        optimalMonsterRange = skillUse.range + 1
-        return
-    }
-
     if (!dw.isSkillReady(skillUse.md) || dw.distance(target, dw.c) > skillUse.range) {
         return
     }
