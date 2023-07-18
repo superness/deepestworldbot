@@ -366,8 +366,6 @@ setInterval(function () {
 
     let skillUse = getBestSkill(dw.distance(target, dw.c))
 
-    skillUse = skillUse ?? dw.c.skills.filter(s => s.md == mySkill).shift()
-
     optimalMonsterRange = skillUse.range
 
     // If my target is too scary and we haven't started fighting yet
