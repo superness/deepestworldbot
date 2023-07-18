@@ -175,18 +175,22 @@ for (let i = 0; i < visionGrid.length; ++i) {
 }
 
 function getNonTraversableEntities() {
-    let nonTraversableEntities = dw.findEntities(e => !e.ai && !e.player && !e.ore && !e.md.includes("portal"))
-    let count = nonTraversableEntities.length
+    let nonTraversableEntities = []
+    let blockingEntities = dw.findEntities(e => !e.ai && !e.player && !e.ore && !e.md.includes("portal"))
 
     // The non traversable entities are 1 tall and 2 wide so we create a duplicate
     // that is offset by x+(terrainThckness/2)
+    let count = blockingEntities.length
     for(let i = 0; i < count; ++i)
     {
-        let e = nonTraversableEntities[i]
-        let duplicate = {x:e.x+(8/96), y:e.y, id:e.id}
+        let e = blockingEntities[i]
+
+        // reposition the non-traversable entities a little to make them feel right 
+        // trial and error
+        let duplicate = {x:e.x-(16/96), y:e.y-(2*16/96), id:e.id}
         nonTraversableEntities.push(duplicate)
     }
-
+    
     // walk thru chunks and add everything that is not 0
     let chunkPropertyKeys = Object.keys(dw.chunks).filter(k => k.startsWith(dw.c.l))
     for (let k of chunkPropertyKeys) {
