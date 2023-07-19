@@ -100,7 +100,6 @@ function hasLineOfSafety(target, from = dw.character) {
 
     return true
 }
-let lastGridUpdate = new Date()
 
 function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
     let nearMonsters = monsters.filter(m => dw.distance({ x: x, y: y }, m) < radius)
@@ -118,19 +117,15 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
         spotValue = 555
         spotType = 'dangerous'
     }
-    
-    let seconds = (new Date().getTime() - lastTextUpdate.getTime()) / 1000
 
     if (spotType == 'open') {
         for (let monster of nearMonsters) {
-            let monsterTest = {x:monster.x, y:monster.y}
+            let monsterTest = { x: monster.x, y: monster.y }
 
-            if(monster.id in entitiesDirMap && entitiesDirMap[monster.id].x)
-            {
-                let moveSpeedUse = monster.moveSpeed * seconds
+            if (monster.id in entitiesDirMap && entitiesDirMap[monster.id].x) {
 
-                monsterTest.x += entitiesDirMap[monster.id].x * moveSpeedUse
-                monsterTest.y += entitiesDirMap[monster.id].y * moveSpeedUse
+                monsterTest.x += entitiesDirMap[monster.id].x
+                monsterTest.y += entitiesDirMap[monster.id].y
             }
 
             let dist = dw.distance({ x: x, y: y }, monsterTest)
@@ -343,7 +338,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     drawLineToPOI(ctx, cx, cy, target, `rgb(245, 239, 66, 0.5)`)
 })
 
-function drawLineToPOI(ctx, cx, cy, target, style) {
+function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
     let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
     let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
 
@@ -354,8 +349,8 @@ function drawLineToPOI(ctx, cx, cy, target, style) {
         let spotx = target.x * 96 - camOffsetX - 5
         let spoty = target.y * 96 - camOffsetY - 5
 
-        let playerx = dw.c.x * 96 - camOffsetX
-        let playery = dw.c.y * 96 - camOffsetY
+        let playerx = from.x * 96 - camOffsetX
+        let playery = from.y * 96 - camOffsetY
 
         ctx.beginPath()
         ctx.moveTo(playerx, playery)
@@ -461,7 +456,18 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 })
 
 
+// Entity directions
+dw.on("drawEnd", (ctx, cx, cy) => {
+    for (let eid of Object.keys(entitiesDirMap)) {
+        
+        let data = entitiesDirMap[eid]
+        let entity = dw.findEntities(e => e.id == eid).shift()
 
+        if(!entity) continue
+
+        drawLineToPOI(ctx, cx, cy, {x:entity.x + data.x, y:entity.y + data.y}, 'black', entity)
+    }
+})
 
 
 
@@ -490,10 +496,8 @@ dw.on('hit', data => {
         if (hit.rip && hit.target == dw.c.id) {
             moveToSpot = dw.c.spawn
         }
-        else if(hit.rip)
-        {
-            if(hit.target in entitiesDirMap)
-            {
+        else if (hit.rip) {
+            if (hit.target in entitiesDirMap) {
                 delete entitiesDirMap[hit]
             }
         }
@@ -778,7 +782,7 @@ setInterval(function () {
 
     skillUse = skillUse ?? dw.c.skills.filter(s => s.md == mySkill).shift()
 
-    optimalMonsterRange = skillUse.range - 0.1
+    optimalMonsterRange = skillUse.range - 0.01
 
     if (!dw.isSkillReady(skillUse.md) || dw.distance(target, dw.c) > skillUse.range) {
         return
@@ -790,31 +794,21 @@ setInterval(function () {
 
 // Tracking entity movement directions
 let entitiesDirMap = {}
-let entitiesPosMap = {}
-setInterval(function() {
-    entitiesDirMap = {}
-    for(let entity of dw.findEntities(e => e.ai))
-    {
-        if(!(entity.id in entitiesPosMap))
-        {
-            entitiesPosMap[entity.id] = {x:entity.x, y:entity.y}
-            continue
-        }
-
-        const len = dw.distance(entity, entitiesPosMap[entity.id])
+dw.on('diff', entities => {
+    for (const data of entities) {
+        const entity = dw.e.find(e => e.id === data.id)
         const dir = {
-            x:(entity.x - entitiesPosMap[entity.id].x) / len, 
-            y:(entity.y - entitiesPosMap[entity.id].y) / len
+            x: (data.x - entity.x),
+            y: (data.y - entity.y)
         };
 
-        if(!(entity.id in entitiesDirMap))
-        {
+        if (!(entity.id in entitiesDirMap)) {
             entitiesDirMap[entity.id] = dir
         }
 
-        entitiesPosMap[entity.id] = {x:entity.x, y:entity.y}
+        entitiesDirMap[entity.id] = dir
     }
-}, 300)
+})
 
 
 function Stopwatch() {
