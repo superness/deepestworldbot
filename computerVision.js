@@ -302,8 +302,8 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     let squareWidth = gridWidth / gridArrWidth * 96
     let squareHeight = gridHeight / gridArrHeight * 96
 
-    let gridLeft = (dw.c.x - gridWidth / 2) * 96 - camOffsetX
-    let gridTop = (dw.c.y - gridHeight / 2) * 96 - camOffsetY
+    let gridLeft = (dw.c.x - gridWidth / 2) * 96 - camOffsetX - squareWidth / 2
+    let gridTop = (dw.c.y - gridHeight / 2) * 96 - camOffsetY - squareHeight / 2
 
     ctx.font = "12px arial";
 
