@@ -19,6 +19,10 @@ let scaryMonsterRadius = 5
 let terrainThickness = 0.35
 let entityThickness = 0.3
 
+async function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function sqr(x) { return x * x }
 function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y) }
 function distToSegmentSquared(p, v, w) {
