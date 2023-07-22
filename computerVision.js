@@ -1023,8 +1023,6 @@ setInterval(function () {
         return
     }
 
-    if (gearTesting) return
-
     dw.useSkill(skillUse.md, { id: target.id })
 }, 10)
 
@@ -1090,4 +1088,3 @@ function Stopwatch() {
         sw.Reset();
     }
 }
-
