@@ -6,11 +6,11 @@ let optimalMonsterRange = dw.c.skills.filter(s => s).shift().range
 
 let gridUpdatePeriod = 7
 
-let gridWidth = 16 // in-game units, this captures the area entities load in
+let gridWidth = 24 // in-game units, this captures the area entities load in
 let gridHeight = 16
 
-let gridArrWidth = gridWidth * 4
-let gridArrHeight = gridHeight * 4
+let gridArrWidth = gridWidth * 32
+let gridArrHeight = gridHeight * 2
 
 // How far to stay away from hostiles  we can't beat
 let scaryMonsterRadius = 5
