@@ -880,7 +880,7 @@ function getMyDmg() {
 }
 
 function getMyBattleScore(useMaxHp = false) {
-    return getMyDmg() * ((useMaxHp ? dw.c.hpMax : dw.c.hp) + (useMaxHp ? dw.c.mpMax : dw.c.mp))
+    return getMyDmg() * (useMaxHp ? dw.c.hpMax : dw.c.hp)
 }
 
 function getGridSpot(x, y) {
