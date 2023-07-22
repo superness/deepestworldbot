@@ -6,18 +6,18 @@ let optimalMonsterRange = dw.c.skills.filter(s => s).shift().range
 
 let gridUpdatePeriod = 7
 
-const gridWidth = 24 // in-game units, this captures the area entities load in
-const gridHeight = 16
+let gridWidth = 16 // in-game units, this captures the area entities load in
+let gridHeight = 16
 
-const gridArrWidth = gridWidth * 2
-const gridArrHeight = gridHeight * 2
+let gridArrWidth = gridWidth * 4
+let gridArrHeight = gridHeight * 4
 
 // How far to stay away from hostiles  we can't beat
-let scaryMonsterRadius = 4.5
+let scaryMonsterRadius = 5
 
 // How wide to treat terrain for line of sight checks
-let terrainThickness = 0.7
-let entityThickness = 0.5
+let terrainThickness = 0.35
+let entityThickness = 0.3
 
 function sqr(x) { return x * x }
 function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y) }
@@ -34,6 +34,7 @@ function distToSegmentSquared(p, v, w) {
 function distToSegment(p, v, w) { return Math.sqrt(distToSegmentSquared(p, v, w)); }
 
 function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []) {
+    if (!target) return false
     if (dw.getTerrainAt({ l: dw.c.l, x: target.x, y: target.y }) > 0) {
         return false
     }
@@ -71,11 +72,12 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
 // and a target location if the pill area includes a monster then it is not safe to move there
 // as it would cause us to move close enough to pull a monster
 function hasLineOfSafety(target, from = dw.character) {
-    let hostlies = dw.findEntities(e => e.hostile && !isValidTarget(e))
+    if (!target) return false
+    let hostlies = dw.findEntities(e => dw.c.mission == undefined && e.hostile && !isValidTarget(e))
     for (let monster of hostlies) {
         if (dw.targetId == monster.id) continue
 
-        // If we are closer than scaryMonsteRadius to a hostile monster then this algorithm
+        // If we are closer than scaryMonsterRadius to a hostile monster then this algorithm
         // will correctly mark every location on the grid as dangerous
         // Instead we mark every location that moves in the direction of the monster
         // as dangerous and otherwise do nothing, so that there are grid spots available
@@ -93,6 +95,18 @@ function hasLineOfSafety(target, from = dw.character) {
         // Check how close the line segment from the player to the spot
         // gets to the mosnter
         let distToTarget = distToSegment(monster, from, target)
+        if (distToTarget < scaryMonsterRadius) {
+            return false
+        }
+
+        let monsterTest = {x:monster.x, y:monster.y}
+        if (monster.id in entitiesDirMap && entitiesDirMap[monster.id].x) {
+
+            monsterTest.x += entitiesDirMap[monster.id].x
+            monsterTest.y += entitiesDirMap[monster.id].y
+        }
+        
+        distToTarget = distToSegment(monsterTest, from, target)
         if (distToTarget < scaryMonsterRadius) {
             return false
         }
@@ -128,9 +142,9 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
                 monsterTest.y += entitiesDirMap[monster.id].y
             }
 
-            let dist = dw.distance({ x: x, y: y }, monsterTest)
+            let dist = Math.max(dw.distance({ x: x, y: y }, monster))
 
-            if (monster.level < dw.c.level - 2 && !monster.hostile) continue
+            if (dw.c.mission == undefined && monster.level < dw.c.level - 2 && !monster.hostile) continue
 
             if (isValidTarget(monster) && (!target || target && target.id == monster.id)) {
 
@@ -160,46 +174,30 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
             }
             else {
                 if (dist < scaryMonsterRadius && monster.hostile) {
-                    spotValue += 500 * (1 - (dist / 8.0))
+                    spotValue += 500
                     spotType = 'dangerous'
-                }
-                else {
-                    // Too close to a monster we can fight is bad
-                    if (dist < 2 && optimalMonsterRange > 2) {
-                        spotValue += 80 * (1 - (dist / 2))
-                        spotType = 'negative-value'
-                    }
                 }
             }
         }
     }
 
-    return { positionValue: spotValue, type: spotType }
-}
-
-let visionGrid = new Array(gridArrWidth);
-for (let i = 0; i < visionGrid.length; ++i) {
-    visionGrid[i] = new Array(gridArrHeight)
-
-    for (let j = 0; j < visionGrid[i].length; ++j) {
-        visionGrid[i][j] = {}
-    }
+    return { positionValue: spotValue, type: spotType, lastUpdate: new Date() }
 }
 
 function getNonTraversableEntities() {
     let nonTraversableEntities = []
     let blockingEntities = dw.findEntities(e => !e.ai && !e.player && !e.ore && !e.md.includes("portal"))
 
-    // The non traversable entities are 1 tall and 2 wide so we create a duplicate
-    // that is offset by x+(terrainThckness/2)
     let count = blockingEntities.length
     for (let i = 0; i < count; ++i) {
         let e = blockingEntities[i]
 
-        // reposition the non-traversable entities a little to make them feel right 
-        // trial and error
-        let duplicate = { x: e.x, y: e.y, id: e.id }
-        nonTraversableEntities.push(duplicate)
+        let hitbox = dw.md.items[e.md].hitbox ?? {w:0, h:0}
+
+        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h, id: e.id })
+        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h / 2, id: e.id })
+        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h, id: e.id })
+        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h / 2, id: e.id })
     }
 
     // walk thru chunks and add everything that is not 0
@@ -218,9 +216,13 @@ function getNonTraversableEntities() {
                         y < dw.c.y - gridHeight / 2 || y > dw.c.y + gridHeight / 2) {
                         continue
                     }
-
-
+                    
                     nonTraversableEntities.push({ x: x + 0.5, y: y + 0.5 })
+
+                    nonTraversableEntities.push({ x: x + terrainThickness / 2, y: y + terrainThickness / 2 })
+                    nonTraversableEntities.push({ x: x + 1 - terrainThickness / 2, y: y + terrainThickness / 2 })
+                    nonTraversableEntities.push({ x: x + terrainThickness / 2, y: y + 1 - terrainThickness / 2 })
+                    nonTraversableEntities.push({ x: x + 1 - terrainThickness / 2, y: y + 1 - terrainThickness / 2 })
                 }
             }
         }
@@ -229,10 +231,100 @@ function getNonTraversableEntities() {
     return nonTraversableEntities
 }
 
-function* yieldVisionGridUpdates() {
+// convert visionGrid into visionSquares
+// make sure it works still
+// make methods to slice sections of squares into more or less smaller or bigger squares
+// upate the collection of squares
+// render the collection of squares
+let visionGrid = new Array(gridArrWidth);
+
+let gridLeft = dw.c.x - (gridWidth / 2)
+let gridTop = dw.c.y - (gridHeight / 2)
+
+let squareWidth = gridWidth / gridArrWidth
+let squareHeight = gridHeight / gridArrHeight
+
+squareWidth = gridWidth / gridArrWidth
+squareHeight = gridHeight / gridArrHeight
+
+for (let i = 0; i < visionGrid.length; ++i) {
+    visionGrid[i] = new Array(gridArrHeight)
+
+    for (let j = 0; j < visionGrid[i].length; ++j) {
+        let x = gridLeft + i * squareWidth - squareWidth / 2
+        let y = gridTop + j * squareHeight - squareHeight / 2
+
+        visionGrid[i][j] = { x: x, y: y, threat: 555, type: 'dangerous', lastUpdate: new Date() }
+    }
+}
+
+function* yieldVisionGridUpdatesOnOldSpots(minRange = 0, maxRange = 100) {
     while (true) {
         let monsters = dw.findEntities(e => e.ai)
         let nonTraversableEntities = getNonTraversableEntities()
+
+        let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
+
+        let visionGridEx = []
+        for (let i = 0; i < gridArrWidth; ++i) {
+            for (let j = 0; j < gridArrHeight; ++j) {
+
+                let distPlayer = dw.distance(visionGrid[i][j], dw.c)
+
+                let distUse = distPlayer
+
+                if(moveToSpot && moveToSpot.x)
+                {
+                    let distMoveTo = dw.distance(visionGrid[i][j], moveToSpot)
+                    distUse = Math.min(distUse, distMoveTo)
+                }
+
+                if(target)
+                {
+                    let distMonster = dw.distance(visionGrid[i][j], target)
+                    distUse = Math.min(distMonster, distUse)
+                }
+
+                distUse *= visionGrid[i][j].threat
+
+                visionGridEx.push({i:i, j:j, data:visionGrid[i][j], dist:distUse})
+            }
+        }
+
+        let now = new Date()
+        visionGridEx.sort((a, b) => ((now.getTime() - b.data.lastUpdate.getTime()) / b.dist) - ((now.getTime() - a.data.lastUpdate.getTime()) / a.dist))
+
+        for(let spot of visionGridEx)
+        {
+            now = new Date()
+
+            let gridLeft = dw.c.x - (gridWidth / 2)
+            let gridTop = dw.c.y - (gridHeight / 2)
+    
+            let squareWidth = gridWidth / gridArrWidth
+            let squareHeight = gridHeight / gridArrHeight
+    
+            squareWidth = gridWidth / gridArrWidth
+            squareHeight = gridHeight / gridArrHeight
+
+            let x = gridLeft + spot.i * squareWidth - squareWidth / 2
+            let y = gridTop + spot.j * squareHeight - squareHeight / 2
+
+            let spotInfo = getSpotInfo(x, y, scaryMonsterRadius, monsters, nonTraversableEntities)
+
+            yield { i: spot.i, j: spot.j, data: { x: x, y: y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
+        }
+    }
+}
+
+async function updateVisionGridOld() {
+    let sw = new Stopwatch()
+    sw.Start()
+
+    // Update spots that haven't had updates recently
+    let visionGridUpdateYielderOld = yieldVisionGridUpdatesOnOldSpots(0, 100)
+    while(sw.ElapsedMilliseconds < gridUpdatePeriod) {
+        let visionGridUpdate = visionGridUpdateYielderOld.next().value
 
         let gridLeft = dw.c.x - (gridWidth / 2)
         let gridTop = dw.c.y - (gridHeight / 2)
@@ -243,32 +335,18 @@ function* yieldVisionGridUpdates() {
         squareWidth = gridWidth / gridArrWidth
         squareHeight = gridHeight / gridArrHeight
 
-        // After mapping all the terrain get the spot's info
-        for (let i = 0; i < gridArrWidth; ++i) {
-            for (let j = 0; j < gridArrHeight; ++j) {
-                let x = gridLeft + i * squareWidth - squareWidth / 2
-                let y = gridTop + j * squareHeight - squareHeight / 2
-                let spotInfo = getSpotInfo(x, y, scaryMonsterRadius, monsters, nonTraversableEntities)
-                yield { i: i, j: j, data: { x: x, y: y, threat: spotInfo.positionValue, type: spotInfo.type } }
-            }
-        }
+        let x = gridLeft + visionGridUpdate.i * squareWidth - squareWidth / 2
+        let y = gridTop + visionGridUpdate.j * squareHeight - squareHeight / 2
+        
+        visionGrid[visionGridUpdate.i][visionGridUpdate.j] = { x: x, y: y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() }
     }
+
+    await sleep(1)
+
+    updateVisionGridOld()
 }
+setTimeout(updateVisionGridOld, 100)
 
-
-let visionGridUpdateYielder = yieldVisionGridUpdates()
-async function updateVisionGrid() {
-    let sw = new Stopwatch()
-    sw.Start()
-    while (sw.ElapsedMilliseconds < gridUpdatePeriod) {
-        let visionGridUpdate = visionGridUpdateYielder.next().value
-        visionGrid[visionGridUpdate.i][visionGridUpdate.j] = visionGridUpdate.data
-    }
-}
-
-setInterval(function () {
-    updateVisionGrid()
-}, gridUpdatePeriod)
 
 
 // UI
@@ -307,21 +385,25 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 
     ctx.font = "12px arial";
 
+    let now = new Date()
     for (let i = 0; i < gridArrWidth; ++i) {
         for (let j = 0; j < gridArrHeight; ++j) {
             let threatLevel = Math.max(Math.min(visionGrid[i][j].threat, 100), 0)
             let alpha = threatLevel / 100.0 * 0.3
 
-            ctx.fillStyle = getGridStyle(visionGrid[i][j].type, alpha)
+            ctx.fillStyle = getGridStyle(visionGrid[i][j].type, 1)
 
             let x = visionGrid[i][j].x * 96 - camOffsetX
             let y = visionGrid[i][j].y * 96 - camOffsetY
 
-            x = gridLeft + (squareWidth * i)
-            y = gridTop + (squareHeight * j)
+            if(x < -1 * squareWidth || x > ctx.canvas.width || y < -1 * squareHeight || y > ctx.canvas.width) continue
+
+            let sizeMulti = Math.max(0, (1000 - (now - visionGrid[i][j].lastUpdate)) / 1000)
+            let widthUse = squareWidth / 2 * sizeMulti
+            let heightUse = squareHeight / 2 * sizeMulti
 
             ctx.beginPath()
-            ctx.rect(x, y, squareWidth, squareHeight)
+            ctx.rect(x + (squareWidth - widthUse) / 2, y + (squareHeight - heightUse) / 2, widthUse, heightUse)
             ctx.fill()
 
             ctx.fillStyle = `rgb(0, 0, 0, 0.5)`
@@ -363,13 +445,6 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
     }
 }
 
-
-
-
-
-
-
-
 // Draw monster nameplates
 dw.on("drawEnd", (ctx, cx, cy) => {
     ctx.strokeStyle = "green"
@@ -380,6 +455,8 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 
     let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
     let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
+
+    let myBattleScore = Math.round(getMyBattleScore(false))
 
     for (let monster of monsters) {
         let x = monster.x * 96 - camOffsetX
@@ -416,10 +493,8 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         ctx.lineWidth = 4
 
         let dmg = Math.round(getMonsterDmg(monster))
-        let myBattleScore = Math.round(getMyBattleScore())
         let battleScore = Math.round(getMonsterBattleScore(monster))
-        let battleInfo = `${myBattleScore} 🗡️ ${battleScore}`
-        let name = `${dmg}⚔️${monster.level} ${monster.md}`
+        let name = `🎖️${monster.level} ${monster.md}`
 
         if (monster.r ?? 0 >= 1) {
             name += `💀`
@@ -428,20 +503,34 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             }
         }
 
-        if (battleScore < myBattleScore) {
+        ctx.font = "14px arial"
+        ctx.textAlign = "center"
+        ctx.strokeText('🗡️', x, y - 8 - 20)
+        ctx.fillText('🗡️', x, y - 8 - 20)
+
+        // draw dmg
+        ctx.fillStyle = "orange"
+        ctx.textAlign = "right"
+        let textWidth = ctx.measureText(dmg).width
+        ctx.strokeText(dmg, x - textWidth, y - 8 - 20)
+        ctx.fillText(dmg, x - textWidth, y - 8 - 20)
+
+        ctx.fillStyle = "white"
+        if (battleScore < myBattleScore * 0.7) {
             ctx.fillStyle = "white"
         }
         else if (isValidTarget(monster)) {
-            ctx.fillStyle = "yellow"
+            ctx.strokeStyle = "orange"
         }
         else {
-            ctx.fillStyle = "red"
+            ctx.strokeStyle = "red"
         }
 
-        ctx.font = "14px arial"
-        ctx.textAlign = "center"
-        ctx.strokeText(battleInfo, x, y - 8 - 20)
-        ctx.fillText(battleInfo, x, y - 8 - 20)
+        // draw score
+        ctx.textAlign = "left"
+        textWidth = ctx.measureText('x').width + 5
+        ctx.strokeText(battleScore, x + textWidth, y - 8 - 20)
+        ctx.fillText(battleScore, x + textWidth, y - 8 - 20)
 
         ctx.font = "18px arial"
         ctx.textAlign = "center"
@@ -453,19 +542,114 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         ctx.strokeText(monster.hp, x, y + 8)
         ctx.fillText(monster.hp, x, y + 8)
     }
+
+    let x = ctx.canvas.width / 2
+    let y = ctx.canvas.height / 2 - 120
+
+    ctx.fillStyle = `rgb(0, 0, 0, 0.5)`
+
+    let nameplateWidth = 192
+    let nameplateHeight = 16
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y, nameplateWidth, nameplateHeight)
+    ctx.fill()
+
+    ctx.strokeStyle = "black"
+    ctx.fillStyle = "green"
+
+    if(dw.c.hp / dw.c.hpMax < 0.66)
+    {
+        ctx.fillStyle = "orange"
+    }
+
+    if(dw.c.hp / dw.c.hpMax < 0.33)
+    {
+        ctx.fillStyle = "red"
+    }
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y, nameplateWidth * dw.c.hp / dw.c.hpMax, nameplateHeight)
+    ctx.fill()
+
+    ctx.fillStyle = "rgb(0, 0, 255, 0.6"
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y + 3 * nameplateHeight / 4, nameplateWidth * dw.c.mp / dw.c.mpMax, nameplateHeight / 4)
+    ctx.fill()
+
+    ctx.fillStyle = `rgb(255, 255, 255, 0.3)`
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y, nameplateWidth, nameplateHeight / 2)
+    ctx.fill()
+
+    ctx.lineWidth = 2
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y, nameplateWidth, nameplateHeight)
+    ctx.stroke()
+
+    ctx.strokeStyle = "black"
+    ctx.lineWidth = 2
+
+    ctx.beginPath()
+    ctx.rect(x - nameplateWidth / 2, y, nameplateWidth, nameplateHeight)
+    ctx.stroke()
+
+    ctx.strokeStyle = "black"
+    ctx.fillStyle = "white"
+
+    ctx.lineWidth = 4
+
+    ctx.font = "12px arial";
+    ctx.fillStyle = "white"
+    ctx.strokeText(dw.c.hp, x, y + 12)
+    ctx.fillText(dw.c.hp, x, y + 12)
+
+    let name = `🎖️${dw.c.level} ${dw.c.name.toLowerCase()}`
+
+    ctx.font = "20px arial"
+    ctx.textAlign = "center"
+    ctx.strokeText('🗡️', x, y - 8 - 30)
+    ctx.fillText('🗡️', x, y - 8 - 30)
+    ctx.font = "16px arial"
+
+    // draw dmg
+    ctx.fillStyle = "orange"
+    ctx.textAlign = "right"
+    let dmg = getSkillDamage(getBestSkill(5))
+    let textWidth = ctx.measureText('x').width + 8
+    ctx.strokeText(dmg, x - textWidth, y - 8 - 30)
+    ctx.fillText(dmg, x - textWidth, y - 8 - 30)
+
+    ctx.fillStyle = "white"
+
+    // draw score
+    myBattleScore = Math.round(getMyBattleScore(true))
+    ctx.textAlign = "left"
+    textWidth = ctx.measureText('x').width + 8
+    ctx.strokeText(myBattleScore, x + textWidth, y - 8 - 30)
+    ctx.fillText(myBattleScore, x + textWidth, y - 8 - 30)
+
+    ctx.font = "24px arial"
+    ctx.textAlign = "center"
+    ctx.strokeText(name, x, y - 12)
+    ctx.fillText(name, x, y - 12)
 })
 
 
 // Entity directions
 dw.on("drawEnd", (ctx, cx, cy) => {
     for (let eid of Object.keys(entitiesDirMap)) {
-        
+
         let data = entitiesDirMap[eid]
         let entity = dw.findEntities(e => e.id == eid).shift()
 
-        if(!entity) continue
+        if (!entity) continue
+        if (entity == dw.c) continue
 
-        drawLineToPOI(ctx, cx, cy, {x:entity.x + data.x, y:entity.y + data.y}, 'black', entity)
+        drawLineToPOI(ctx, cx, cy, { x: entity.x + data.x, y: entity.y + data.y }, 'black', entity)
     }
 })
 
@@ -484,10 +668,8 @@ dw.on('hit', data => {
         let newText = { text: hit.amount, x: target.x, y: target.y, target: hit.target, life: 1.3, maxLife: 1.3 }
 
         if (target.id == dw.c.id) {
-            newText.x -= 0.2
-        }
-        else {
-            newText.x += 0.2
+            newText.x -= 1
+            newText.y -= 1
         }
 
         floatingText.push(newText)
@@ -495,6 +677,7 @@ dw.on('hit', data => {
         // if the player died then reset moveToSpot to spawn
         if (hit.rip && hit.target == dw.c.id) {
             moveToSpot = dw.c.spawn
+            dw.setTarget(null)
         }
         else if (hit.rip) {
             if (hit.target in entitiesDirMap) {
@@ -604,6 +787,18 @@ function easeInBack(x) {
     return c3 * x * x * x - c1 * x * x;
 }
 
+function easeInExpo(x) {
+    return x === 0 ? 0 : Math.pow(2, 10 * x - 10);
+}
+
+function easeInQuint(x) {
+    return x * x * x * x * x;
+}
+
+function easeOutQuint(x) {
+    return 1 - Math.pow(1 - x, 5);
+}
+
 function easeInOutElastic(x) {
     const c5 = (2 * Math.PI) / 4.5;
 
@@ -620,12 +815,15 @@ function easeInOutQuint(x) {
     return x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2;
 }
 
-
-function isValidTarget(entity, levelCheck = true) {
+function isValidTarget(entity, levelCheck = false) {
     if (entity.targetId == dw.c.id) return true
 
-    if (getMonsterBattleScore(entity) > getMyBattleScore() * 1.3) return false
+    if (getMonsterBattleScore(entity) > getMyBattleScore()) return false
     if (levelCheck && entity.level < dw.c.level - 2 && entity.r === 0 && !entity.hostile) return false
+    if (entity.hostile && ((levelCheck && entity.level < dw.c.level - 4) || entity.x < dw.c.x)) return false
+
+    let mpRequired = ((entity.hp / getMyDmg()) + 1) * getBestSkill(6).cost 
+    if(dw.c.mp < mpRequired) return false
 
     return true
 }
@@ -657,7 +855,7 @@ let eleNameTypesRegex = new RegExp(eleNameTypes.join("|"), "i")
 
 function getMonsterBattleScore(monster) {
     let isEle = eleNameTypesRegex.test(monster.md)
-    return monster.hp * getMonsterDmg(monster) * (isEle ? 1.7 : 1)
+    return (monster.hp) * getMonsterDmg(monster) * (isEle ? 1.7 : 1)
 }
 
 function getMonsterDmg(monster) {
@@ -677,12 +875,38 @@ function getMyDmg() {
     return getSkillDamage(mySkillInfo)
 }
 
-function getMyBattleScore() {
-    return getMyDmg() * dw.c.hp
+function getMyBattleScore(useMaxHp = false) {
+    return getMyDmg() * ((useMaxHp ? dw.c.hpMax : dw.c.hp) + (useMaxHp ? dw.c.mpMax : dw.c.mp))
 }
 
-// Movement logic
+function getGridSpot(x, y) {
+    let squareWidth = gridWidth / gridArrWidth
+    let squareHeight = gridHeight / gridArrHeight
+
+    for (let i = 0; i < visionGrid.length; ++i) {
+        for (let j = 0; j < visionGrid[i].length; ++j) {
+            let spot = visionGrid[i][j]
+            if (x > spot.x && x < spot.x + squareWidth &&
+                y > spot.y && y < spot.y + squareHeight) {
+                return spot
+            }
+        }
+    }
+
+    return null
+}
+
+
+
+
+
+
+
+
+// // Movement logic
 let moveUpdatePeriod = 100
+let searchOffset = 8
+let searchOffsetMission = 4
 setInterval(function () {
     // Find the best spot to move to
     // lower value spots are better
@@ -694,47 +918,54 @@ setInterval(function () {
     // If we didn't find a spot or we don't have a target in range and we have
     // moved to our last choice then choose another spot to search
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-    if ((!bestSpot || !target) && (dw.distance(moveToSpot, dw.c) < 0.2 ||
+    if (((!bestSpot || !target) && (dw.distance(moveToSpot, dw.c) < 0.2) ||
         !hasLineOfSafety(moveToSpot, dw.c) ||
         !hasLineOfSight(moveToSpot, dw.c, getNonTraversableEntities()))) {
-        let searchOffset = 6
 
         if (!bestSpot) {
             // A 50 value spot is neurtal or 'safe'
             // pick the furthest one we can see that is within our search radius
+            //let offsetUse = dw.c.mission == undefined ? searchOffset : searchOffsetMission
             let goodSpots = getGoodSpots(50)
-            let goodFarSpots = goodSpots.filter(p => dw.distance(p, dw.c) > searchOffset)
+            let goodFartherSpots = goodSpots.filter(p => dw.distance(p, dw.c) > searchOffset)
+            let goodFarSpots = goodSpots.filter(p => dw.distance(p, dw.c) > searchOffsetMission)
             let goodESpots = goodFarSpots.filter(p => p.x > dw.c.x)
             let goodSESpots = goodFarSpots.filter(p => p.x > dw.c.x && p.y > dw.c.y)
 
-            bestSpot = goodSESpots.shift() ?? goodESpots.shift() ?? goodFarSpots.shift() ?? goodSpots.shift()
+            bestSpot = goodSESpots.shift() ?? goodESpots.shift() ?? goodFartherSpots.shift() ?? goodFarSpots.shift() ?? goodSpots.shift()
+
+            if (dw.c.mission) {
+                bestSpot = goodFartherSpots.shift() ?? goodFarSpots.shift() ?? goodSpots.shift()
+            }
         }
     }
 
     moveToSpot = bestSpot ?? moveToSpot
-
-    function getGoodSpots(range) {
-        let goodSpots = []
-
-        for (let i = 0; i < gridArrWidth; ++i) {
-            for (let j = 0; j < gridArrHeight; ++j) {
-                if (visionGrid[i][j].threat <= range) {
-                    goodSpots.push(visionGrid[i][j])
-                }
-            }
-        }
-
-        goodSpots.sort(function (a, b) {
-            let da = dw.distance(dw.c, a)
-            let db = dw.distance(dw.c, b)
-
-            return da - db
-        })
-
-        return goodSpots
-    }
+    //console.log('setting spot to', bestSpot)
 }, moveUpdatePeriod)
 
+
+function getGoodSpots(range) {
+    let goodSpots = []
+    let now = new Date()
+
+    for (let i = 0; i < gridArrWidth; ++i) {
+        for (let j = 0; j < gridArrHeight; ++j) {
+            if (visionGrid[i][j].threat <= range && (now - visionGrid[i][j].lastUpdate) < gridUpdatePeriod) {
+                goodSpots.push(visionGrid[i][j])
+            }
+        }
+    }
+
+    goodSpots.sort(function (a, b) {
+        let da = dw.distance(dw.c, a)
+        let db = dw.distance(dw.c, b)
+
+        return da - db
+    })
+
+    return goodSpots
+}
 
 // Movement
 let moveToSpot = { x: dw.c.x, y: dw.c.y }
@@ -758,12 +989,12 @@ setInterval(function () {
 
     if (dist < 0.1) return
 
+    //console.log(moveToSpot, movingToSpot)
     dw.emit('move', movingToSpot)
 }, moveUpdatePeriod)
 
 // Skills and targetting
 setInterval(function () {
-
     if (dw.get(`${dw.name}_skipAttacks`) == true) return
 
     let target = dw.findClosestMonster(m => isValidTarget(m))
@@ -782,11 +1013,13 @@ setInterval(function () {
 
     skillUse = skillUse ?? dw.c.skills.filter(s => s.md == mySkill).shift()
 
-    optimalMonsterRange = skillUse.range - 0.01
+    optimalMonsterRange = skillUse.range - 0.06
 
     if (!dw.isSkillReady(skillUse.md) || dw.distance(target, dw.c) > skillUse.range) {
         return
     }
+
+    if (gearTesting) return
 
     dw.useSkill(skillUse.md, { id: target.id })
 }, 10)
@@ -797,9 +1030,10 @@ let entitiesDirMap = {}
 dw.on('diff', entities => {
     for (const data of entities) {
         const entity = dw.e.find(e => e.id === data.id)
+        const len = dw.distance(data, entity)
         const dir = {
-            x: (data.x - entity.x),
-            y: (data.y - entity.y)
+            x: (data.x - entity.x) / len,
+            y: (data.y - entity.y) / len
         };
 
         if (!(entity.id in entitiesDirMap)) {
