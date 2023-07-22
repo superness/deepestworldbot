@@ -400,7 +400,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             let x = visionGrid[i][j].x * 96 - camOffsetX
             let y = visionGrid[i][j].y * 96 - camOffsetY
 
-            if(x < -1 * squareWidth || x > ctx.canvas.width || y < -1 * squareHeight || y > ctx.canvas.width) continue
+            if(x < -1 * squareWidth || x > ctx.canvas.width || y < -1 * squareHeight || y > ctx.canvas.height) continue
 
             let sizeMulti = Math.max(0, (1000 - (now - visionGrid[i][j].lastUpdate)) / 1000)
             let widthUse = squareWidth / 2 * sizeMulti
