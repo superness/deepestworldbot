@@ -9,7 +9,7 @@ let gridUpdatePeriod = 7
 let gridWidth = 24 // in-game units, this captures the area entities load in
 let gridHeight = 16
 
-let gridArrWidth = gridWidth * 32
+let gridArrWidth = gridWidth * 2
 let gridArrHeight = gridHeight * 2
 
 // How far to stay away from hostiles  we can't beat
