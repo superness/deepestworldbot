@@ -668,28 +668,6 @@ function getGridStyle(type, alpha) {
     return styleFormat.replace("alpha", alpha)
 }
 dw.on("drawEnd", (ctx, cx, cy) => {
-    let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
-    let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
-    let monsters = dw.findEntities((e) => e.ai)
-    ctx.lineWidth = 2
-    ctx.strokeStyle = "red"
-    for (let monster of monsters) {
-        let x = monster.x * 96 - camOffsetX
-        let y = monster.y * 96 - camOffsetY
-        ctx.beginPath()
-        ctx.arc(x, y, scaryMonsterRadius * 96, 0, 2 * Math.PI)
-        ctx.stroke()
-    }
-    ctx.strokeStyle = "purple"
-    for (let spot of recentSpots) {
-        let x = spot.x * 96 - camOffsetX
-        let y = spot.y * 96 - camOffsetY
-        ctx.beginPath()
-        ctx.arc(x, y, recencyAvoidanceRadius * 96, 0, 2 * Math.PI)
-        ctx.stroke()
-    }
-})
-dw.on("drawEnd", (ctx, cx, cy) => {
     if (!dw.get("showComputerVision")) {
         return
     }
