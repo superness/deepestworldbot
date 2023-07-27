@@ -56,19 +56,11 @@ class DWAnalytics {
         this.initialize(dw)
     }
 
-    prevLevel = dw.c.level
-    dw = dw
-
     initialize(dw) {
-        setInterval(function () {
-            if (this.dw.c.level > this.prevLevel) {
-                console.log('level!')
-                this.onLevel(dw.c.level, "woot")
-                this.prevLevel = this.dw.c.level
-                this.dw = dw
-            }
-        }, 1000)
+        this.prevLevel = dw.c.level
+        this.dw = dw
 
+        setInterval(() => this.levelUpCheck(), 1000)
 
         dw.on('loot', d => {
             for (let e of d) {
@@ -83,6 +75,14 @@ class DWAnalytics {
                 this.processHitEventAnalytics(hit)
             }
         })
+    }
+    
+    levelUpCheck() {
+        if (this.dw.c.level > this.prevLevel) {
+            this.onLevel(dw.c.level, "woot")
+            this.prevLevel = this.dw.c.level
+            this.dw = dw
+        }
     }
 
     processHitEventAnalytics(hit) {
@@ -119,9 +119,7 @@ class DWAnalytics {
     }
 
     setDBId(id) {
-        console.log('set id to ', id)
         this.dw.set(this.getDBIdKey(), id)
-        console.log('id set')
     }
 
     async onStart() {
