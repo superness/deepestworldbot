@@ -77,7 +77,6 @@ class DWAnalytics {
         })
 
         dw.on("hit", (data) => {
-            console.log('hit!')
             for (let hit of data) {
                 if (!hit.amount)
                     continue;
