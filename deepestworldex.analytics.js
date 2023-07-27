@@ -142,6 +142,9 @@ class DWAnalytics {
             this.setDBId(data.id)
             console.log("🔮  A new thread weaves into the tapestry of time. Our journey is remembered.");
         }
+
+        dw.log('you can watch your character here', `https://www.deepestworldex.com/Character?id=${this.getDBId()}`)
+
     }
 
     async onDeath(nameOfMurderer, levelOfMurderer, maxHPOfMurderer, description = "death") {
