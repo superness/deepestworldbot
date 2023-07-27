@@ -143,7 +143,7 @@ class DWAnalytics {
             console.log("🔮  A new thread weaves into the tapestry of time. Our journey is remembered.");
         }
 
-        dw.log('you can watch your character here', `https://www.deepestworldex.com/Character?id=${this.getDBId()}`)
+        dw.log(`you can watch your character here https://www.deepestworldex.com/Character?id=${this.getDBId()}`)
         console.log('you can watch your character here', `https://www.deepestworldex.com/Character?id=${this.getDBId()}`)
 
     }
