@@ -419,7 +419,7 @@ function getMaxDamageDealtBeforeOom() {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     let mySkillInfo = getBestSkill(dw.distance(target, dw.c)) ?? dw.c.skills.filter((s) => s.md).shift()
     let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen - dw.c.mpRegen)
-    return timeToOom * getMyDmg()
+    return Math.max(0, timeToOom * getMyDmg())
 }
 
 function getMyBattleScore(useMaxHp = false) {
@@ -428,14 +428,7 @@ function getMyBattleScore(useMaxHp = false) {
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
     let bestSkill = getBestSkill(6)
-    return Math.min(maxDmgScore, potentialScore) + (bestSkill.range ?? 0) * (useMaxHp ? dw.c.hpMax : dw.c.hp)
-}
-
-function getMyMaximumBattleScore() {
-    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800
-    let bestSkill = getBestSkill(6)
-    return potentialScore + ((bestSkill.range ?? 0) * dw.c.hpMax)
+    return Math.min(maxDmgScore, potentialScore)
 }
 
 // Pick where to move
