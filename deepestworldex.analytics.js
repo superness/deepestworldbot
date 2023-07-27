@@ -202,6 +202,6 @@ class DWAnalytics {
 }
 
 
-const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api")
+const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api", dw)
 
 dwa.onStart()
