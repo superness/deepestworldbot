@@ -49,31 +49,32 @@ function getMonsterBattleScore(monster, useFullHp = false) {
 
 // Analytics
 class DWAnalytics {
-    constructor(character, apiBaseUrl) {
+    dwProvider = null
+
+    constructor(character, apiBaseUrl, dwProvider) {
         this.character = character
         this.apiBaseUrl = apiBaseUrl
-
-        this.initialize()
+        this.dwProvider = dwProvider
     }
 
     initialize() {
         let prevLevel = dw.c.level
         setInterval(function () {
-            if (dw.c.level > prevLevel) {
+            if (this.dwProvider().c.level > prevLevel) {
                 console.log('level!')
                 this.onLevel(dw.c.level, "woot")
-                prevLevel = dw.c.level
+                prevLevel = this.dwProvider().c.level
             }
         }, 1000)
 
 
-        dw.on('loot', d => {
+        this.dwProvider().on('loot', d => {
             for (let e of d) {
                 this.onLoot(e.item.md, e.item.qual, e.item.r ?? 0, JSON.stringify(e.item.mods))
             }
         })
 
-        dw.on("hit", (data) => {
+        this.dwProvider().on("hit", (data) => {
             console.log('hit!')
             for (let hit of data) {
                 if (!hit.amount)
@@ -84,22 +85,22 @@ class DWAnalytics {
     }
 
     processHitEventAnalytics(hit) {
-        let target = dw.findEntities((entity) => entity.id === hit.target).shift()
-        let actor = dw.findEntities((entity) => entity.id === hit.actor).shift()
+        let target = this.dwProvider().findEntities((entity) => entity.id === hit.target).shift()
+        let actor = this.dwProvider().findEntities((entity) => entity.id === hit.actor).shift()
         if (!hit.amount) {
             return
         }
-        if (hit.rip && hit.target == dw.c.id) {
+        if (hit.rip && hit.target == this.dwProvider().c.id) {
             
         let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
             
         let myBattleScore = Math.trunc(getMyMaximumBattleScore())
             
             dwa.onDeath(actor.md, actor.level, actor.hpMax, `${myBattleScore} vs ${monsterBattleScore}`)
-            moveToSpot = dw.c.spawn;
-            dw.setTarget(null);
+            moveToSpot = this.dwProvider().c.spawn;
+            this.dwProvider().setTarget(null);
             
-        } else if (hit.rip && hit.actor == dw.c.id) {
+        } else if (hit.rip && hit.actor == this.dwProvider().c.id) {
             let myBattleScore = Math.trunc(getMyMaximumBattleScore())
             
             let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
@@ -113,16 +114,18 @@ class DWAnalytics {
 
     getDBId() {
         // In the darkest corners of memory (localStorage), our past is waiting.
-        return dw.get(this.getDBIdKey());
+        return this.dwProvider().get(this.getDBIdKey());
     }
 
     setDBId(id) {
         console.log('set id to ', id)
-        dw.set(this.getDBIdKey(), id)
+        this.dwProvider().set(this.getDBIdKey(), id)
         console.log('id set')
     }
 
     async onStart() {
+        this.initialize()
+
         console.log("🌄  A new dawn breaks. With hope in our hearts, we stand once more.");
         try {
             // Check if we exist in the db yet
@@ -134,7 +137,7 @@ class DWAnalytics {
         }
         // It's probably 404 (not found) so make it
         catch (ex) {
-            console.log("🌱  From the Ashes of the past, new life emerges. We define our existence anew.");
+            console.log("🌱  From the ashes of the past, new life emerges. We define our existence anew.");
             let url = `${this.apiBaseUrl}/Characters?name=${this.character.name}&level=${this.character.level}&dwId=${this.getDBIdKey()}&description=somebot`;
             let data = await this.postJson(url);
             this.setDBId(data.id)
@@ -146,7 +149,7 @@ class DWAnalytics {
         console.log("💔  The weight of loss is heavy. Yet we endure, carrying their memory within us.");
         const url = `${this.apiBaseUrl}/CharacterDeaths?characterId=${this.getDBId()}&murderer=${nameOfMurderer}&level=${levelOfMurderer}&maxHP=${maxHPOfMurderer}&description=${description}`;
         const data = await this.postJson(url);
-        console.log("⌛  The Sands of Time hold our sorrows. Our fallen friend, remembered.");
+        console.log("⌛  The sands of time hold our sorrows. Our fallen friend, remembered.");
         return data;
     }
 
@@ -198,7 +201,8 @@ class DWAnalytics {
     }
 }
 
+console.log('making analytics')
+const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api", () => dw)
 
-const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api")
-
+console.log('startinganalytics')
 dwa.onStart()
