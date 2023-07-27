@@ -417,6 +417,9 @@ function getMyDmg() {
 
 function getMaxDamageDealtBeforeOom() {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
+
+    if(!target) return Number.MAX_SAFE_INTEGER
+
     let mySkillInfo = getBestSkill(dw.distance(target, dw.c)) ?? dw.c.skills.filter((s) => s.md).shift()
     let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen - dw.c.mpRegen)
     return Math.max(0, timeToOom * getMyDmg())
@@ -427,7 +430,6 @@ function getMyBattleScore(useMaxHp = false) {
     let potentialScore = getMyDmg() * (useMaxHp ? dw.c.hpMax : dw.c.hp) + 800
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
-    let bestSkill = getBestSkill(6)
     return Math.min(maxDmgScore, potentialScore)
 }
 
