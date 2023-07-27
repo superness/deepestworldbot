@@ -105,7 +105,7 @@ class DWAnalytics {
             let myBattleScore = Math.trunc(getMyMaximumBattleScore())
             
             let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
-            dwa.onKill(target.md, target.level, target.r ?? 0, `${myBattleScore} vs ${monsterBattleScore}`)
+            dwa.onKill(target.md, target.level ?? 0, target.q ?? 0, target.r ?? 0, `${myBattleScore} vs ${monsterBattleScore}`)
         }
     }
 
