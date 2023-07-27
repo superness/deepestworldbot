@@ -49,20 +49,23 @@ function getMonsterBattleScore(monster, useFullHp = false) {
 
 // Analytics
 class DWAnalytics {
-    constructor(character, apiBaseUrl) {
+    constructor(character, apiBaseUrl, dw) {
         this.character = character
         this.apiBaseUrl = apiBaseUrl
 
-        this.initialize()
+        this.initialize(dw)
     }
 
-    initialize() {
-        let prevLevel = dw.c.level
+    prevLevel = dw.c.level
+    dw = dw
+
+    initialize(dw) {
         setInterval(function () {
             if (dw.c.level > prevLevel) {
                 console.log('level!')
                 this.onLevel(dw.c.level, "woot")
-                prevLevel = dw.c.level
+                this.prevLevel = dw.c.level
+                this.dw = dw
             }
         }, 1000)
 
@@ -97,9 +100,9 @@ class DWAnalytics {
             
             dwa.onDeath(actor.md, actor.level, actor.hpMax, `${myBattleScore} vs ${monsterBattleScore}`)
             moveToSpot = dw.c.spawn;
-            dw.setTarget(null);
+            this.dw.setTarget(null);
             
-        } else if (hit.rip && hit.actor == dw.c.id) {
+        } else if (hit.rip && hit.actor == this.dw.c.id) {
             let myBattleScore = Math.trunc(getMyMaximumBattleScore())
             
             let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
@@ -113,12 +116,12 @@ class DWAnalytics {
 
     getDBId() {
         // In the darkest corners of memory (localStorage), our past is waiting.
-        return dw.get(this.getDBIdKey());
+        return this.dw.get(this.getDBIdKey());
     }
 
     setDBId(id) {
         console.log('set id to ', id)
-        dw.set(this.getDBIdKey(), id)
+        this.dw.set(this.getDBIdKey(), id)
         console.log('id set')
     }
 
