@@ -48,7 +48,7 @@ function getMonsterBattleScore(monster, useFullHp = false) {
 
 
 // Analytics
-export class DWAnalytics {
+class DWAnalytics {
     constructor(character, apiBaseUrl) {
         this.character = character
         this.apiBaseUrl = apiBaseUrl
@@ -132,7 +132,7 @@ export class DWAnalytics {
         }
         // It's probably 404 (not found) so make it
         catch (ex) {
-            console.log("🌱  From the ashes of the past, new life emerges. We define our existence anew.");
+            console.log("🌱  From the Ashes of the past, new life emerges. We define our existence anew.");
             let url = `${this.apiBaseUrl}/Characters?name=${this.character.name}&level=${this.character.level}&dwId=${this.getDBIdKey()}&description=somebot`;
             let data = await this.postJson(url);
             this.setDBId(data.id)
@@ -144,7 +144,7 @@ export class DWAnalytics {
         console.log("💔  The weight of loss is heavy. Yet we endure, carrying their memory within us.");
         const url = `${this.apiBaseUrl}/CharacterDeaths?characterId=${this.getDBId()}&murderer=${nameOfMurderer}&level=${levelOfMurderer}&maxHP=${maxHPOfMurderer}&description=${description}`;
         const data = await this.postJson(url);
-        console.log("⌛  The sands of time hold our sorrows. Our fallen friend, remembered.");
+        console.log("⌛  The Sands of Time hold our sorrows. Our fallen friend, remembered.");
         return data;
     }
 
@@ -197,8 +197,6 @@ export class DWAnalytics {
 }
 
 
-export async function initializeDWAnalytics() {
-    const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api");
-    await dwa.onStart();
-    return dwa;
-}
+const dwa = new DWAnalytics(dw.c, "https://www.deepestworldex.com/api")
+
+dwa.onStart()
