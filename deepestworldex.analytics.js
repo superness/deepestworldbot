@@ -61,7 +61,7 @@ class DWAnalytics {
 
     initialize(dw) {
         setInterval(function () {
-            if (dw.c.level > prevLevel) {
+            if (dw.c.level > this.prevLevel) {
                 console.log('level!')
                 this.onLevel(dw.c.level, "woot")
                 this.prevLevel = dw.c.level
