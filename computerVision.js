@@ -420,9 +420,14 @@ function getMaxDamageDealtBeforeOom() {
 
     if(!target) return Number.MAX_SAFE_INTEGER
 
-    let mySkillInfo = getBestSkill(dw.distance(target, dw.c)) ?? dw.c.skills.filter((s) => s.md).shift()
+    let myBestSkill = getBestSkill(dw.distance(target, dw.c)) 
+    let mySkillInfo = myBestSkill ?? dw.c.skills.filter((s) => s.md).shift()
     let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen - dw.c.mpRegen)
-    return Math.max(0, timeToOom * getMyDmg())
+    let myDmg = getMyDmg()
+
+    console.log('getMaxDamageDealtBeforeOom', myBestSkill, mySkillInfo, timeToOom, myDmg)
+
+    return Math.max(0, timeToOom * myDmg)
 }
 
 function getMyBattleScore(useMaxHp = false) {
