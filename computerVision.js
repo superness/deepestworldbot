@@ -227,7 +227,7 @@ function* yieldVisionGridUpdatesOnOldSpots() {
                 visionGridEx.push({ i, j, data: visionGrid[i][j], dist: distUse })
             }
         }
-        let now = new Date()
+        let now =  new Date()
         visionGridEx.sort((a, b) => (now.getTime() - b.data.lastUpdate.getTime()) / b.dist - (now.getTime() - a.data.lastUpdate.getTime()) / a.dist)
         for (let spot of visionGridEx) {
             now = new Date()
@@ -316,7 +316,7 @@ dw.on("hit", (data) => {
             continue
 
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
-
+        
         if (hit.rip) {
             if (hit.actor == dw.c.id) {
                 if (dw.c.hp / dw.c.hpMax > 0.66) {
@@ -335,6 +335,11 @@ dw.on("hit", (data) => {
     }
 })
 
+function getMpRequiredToDefeatMonster(monster) {
+    let mpRequired = (monster.hp / getMyDmg()) * ((getBestSkill(0)?.cost ?? 0) - dw.c.mpRegen)
+    return mpRequired
+}
+
 // This keeps the character from pulling until it has enough mp to win the fight
 setInterval(function () {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
@@ -342,7 +347,7 @@ setInterval(function () {
         optimalMonsterRangeBuffer = 0
         return
     }
-    let mpRequired = target.hp / getMyDmg() * (getBestSkill(6).cost - dw.c.mpRegen) - dw.c.mp / 10
+    let mpRequired = getMpRequiredToDefeatMonster(target)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
     else
@@ -358,7 +363,7 @@ function isValidTarget(entity, levelCheck = dw.c.mission === void 0) {
         return false
     if (dw.c.mission === void 0 && entity.hostile && (levelCheck && entity.level < targetZoneLevel - 2))
         return false
-    let mpRequired = entity.hp / getMyDmg() * (getBestSkill(6).cost - dw.c.mpRegen) - dw.c.mp / 10
+    let mpRequired = getMpRequiredToDefeatMonster(entity)
     if (dw.c.mp < mpRequired)
         return false
     let monsters = dw.findEntities((e) => e.ai && e.id != entity.id)
@@ -372,10 +377,10 @@ function isValidTarget(entity, levelCheck = dw.c.mission === void 0) {
 
 // Skill and damage calcuation
 function getBestSkill(targetDistance) {
-    let bestSkill = dw.c.skills.filter((s) => s).shift()
-    let mostDamage = getSkillDamage(bestSkill)
+    let bestSkill = null
+    let mostDamage = 0
     for (let skill of dw.c.skills) {
-        if (skill.range > targetDistance) {
+        if (skill.range < targetDistance) {
             continue
         }
         let skillDamage = getSkillDamage(skill)
@@ -390,7 +395,8 @@ function getBestSkill(targetDistance) {
 function getSkillDamage(skill) {
     if (!skill)
         return 0
-    return skill.acidDmg + skill.coldDmg + skill.fireDmg + skill.elecDmg + skill.physDmg
+    let skillDmg = skill.acidDmg + skill.coldDmg + skill.fireDmg + skill.elecDmg + skill.physDmg
+    return skillDmg ?? 0
 }
 
 let eleNameTypes = ["fire", "elec", "cold", "acid"]
@@ -411,7 +417,7 @@ function getMonsterDmg(monster) {
 }
 
 function getMyDmg() {
-    let mySkillInfo = getBestSkill(99) ?? dw.c.skills.filter((s) => s.md).shift()
+    let mySkillInfo = getBestSkill(0) ?? dw.c.skills.filter((s) => s.md).shift()
     return getSkillDamage(mySkillInfo)
 }
 
@@ -428,15 +434,28 @@ function getMaxDamageDealtBeforeOom() {
     let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen)
     let myDmg = getMyDmg()
 
-    return Math.max(0, timeToOom * myDmg)
+    let maxPossibleDmg = timeToOom * myDmg
+    return maxPossibleDmg
 }
 
-function getMyBattleScore(useMaxHp = false) {
+function getMyBattleScore(useMaxHp = false) {    
+    let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
+
     // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = getMyDmg() * (useMaxHp ? dw.c.hpMax : dw.c.hp) + 800
+    let potentialScore = getMyDmg() * hpScorePart + 800
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
-    return Math.min(maxDmgScore, potentialScore)
+    let dmgScorePart = Math.min(maxDmgScore, potentialScore)
+    let battleScore = dmgScorePart
+
+    return battleScore
+}
+
+function getMyMaximumBattleScore() {
+    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
+    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800 
+
+    return potentialScore
 }
 
 // Pick where to move
@@ -556,10 +575,17 @@ setInterval(function () {
     if (!target)
         return
     dw.setTarget({ id: target.id })
-    let skillUse = getBestSkill(dw.distance(target, dw.c))
-    skillUse = skillUse ?? dw.c.skills.filter((s) => s.md == mySkill).shift()
+    let distTarget = dw.distance(target, dw.c)
+    let skillUse = getBestSkill(distTarget)
+
+    // No good skills to use
+    if(!skillUse)
+    {
+        return
+    }
+
     optimalMonsterRange = skillUse.range - 0.2
-    if (dw.c.mp < skillUse.cost || !dw.isSkillReady(skillUse.md) || dw.distance(target, dw.c) > skillUse.range) {
+    if (dw.c.mp < (skillUse?.cost ?? 0) || !dw.isSkillReady(skillUse.md) || dw.distance(target, dw.c) > skillUse.range) {
         return
     }
     dw.useSkill(skillUse.md, { id: target.id })
@@ -625,7 +651,7 @@ function Stopwatch() {
     sw.Start = function () {
         if (isRunning)
             return
-        start = new Date()
+        start =  new Date()
         stop = null
         isRunning = true
     }
@@ -668,6 +694,28 @@ function getGridStyle(type, alpha) {
         return "red"
     return styleFormat.replace("alpha", alpha)
 }
+dw.on("drawEnd", (ctx, cx, cy) => {
+    let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
+    let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
+    let monsters = dw.findEntities((e) => e.ai)
+    ctx.lineWidth = 2
+    ctx.strokeStyle = "red"
+    for (let monster of monsters) {
+        let x = monster.x * 96 - camOffsetX
+        let y = monster.y * 96 - camOffsetY
+        ctx.beginPath()
+        ctx.arc(x, y, scaryMonsterRadius * 96, 0, 2 * Math.PI)
+        ctx.stroke()
+    }
+    ctx.strokeStyle = "purple"
+    for (let spot of recentSpots) {
+        let x = spot.x * 96 - camOffsetX
+        let y = spot.y * 96 - camOffsetY
+        ctx.beginPath()
+        ctx.arc(x, y, recencyAvoidanceRadius * 96, 0, 2 * Math.PI)
+        ctx.stroke()
+    }
+})
 dw.on("drawEnd", (ctx, cx, cy) => {
     if (!dw.get("showComputerVision")) {
         return
@@ -864,7 +912,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     ctx.font = "16px arial"
     ctx.fillStyle = "orange"
     ctx.textAlign = "right"
-    let dmg = getSkillDamage(getBestSkill(5))
+    let dmg = getSkillDamage(getBestSkill(0))
     let textWidth = ctx.measureText("x").width + 8
     ctx.strokeText(dmg, x - textWidth, y - 8 - 30)
     ctx.fillText(dmg, x - textWidth, y - 8 - 30)
