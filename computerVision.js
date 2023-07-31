@@ -2,7 +2,7 @@ let showComputerVision = dw.get("showComputerVision") ?? true
 dw.set("showComputerVision", showComputerVision)
 let optimalMonsterRange = dw.c.skills.filter((s) => s).shift().range
 let optimalMonsterRangeBuffer = 0
-let gridUpdatePeriod = 3
+let gridUpdatePeriod = 7
 let gridWidth = 24
 let gridHeight = 16
 let gridArrWidth = gridWidth * 2
@@ -402,17 +402,13 @@ function getSkillDamage(skill) {
     return skillDmg ?? 0
 }
 
-function getDamageReductionAgainst(monster) {
-    return 0.3
-}
-
 let eleNameTypes = ["fire", "elec", "cold", "acid"]
 let eleNameTypesRegex = new RegExp(eleNameTypes.join("|"), "i")
 function getMonsterBattleScore(monster, useFullHp = false) {
     // Without a better damage calculation method let's give elemental monsters a scarier battle score
     // assuming we are going to be weaker against ele dmg than phys
     let isEle = eleNameTypesRegex.test(monster.md) || monster.terrain != 1
-    return (useFullHp ? monster.hpMax : monster.hp) * getMonsterDmg(monster) * (isEle ? 1.3 : 1) * (1.0 - getDamageReductionAgainst(monster))
+    return (useFullHp ? monster.hpMax : monster.hp) * getMonsterDmg(monster) * (isEle ? 1.3 : 1)
 }
 
 function getMonsterDmg(monster) {
@@ -1047,3 +1043,4 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
         ctx.fill()
     }
 }
+
