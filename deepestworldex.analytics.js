@@ -136,14 +136,27 @@ class DWAnalytics {
 
     publishAndFlushCombatLog() {
         for(let combatEvent of this.combatLog) {
-            dwa.onCombatLogEvent(combatEvent.characterId, combatEvent.monsterName, combatEvent.damage, combatEvent.description, combatEvent.isCharacterHit, combatEvent.skillUsed, encodeURIComponent(combatEvent.when.toISOString()))
+            dwa.onCombatLogEvent(
+                combatEvent.characterId, 
+                combatEvent.monsterName, 
+                combatEvent.damage, 
+                combatEvent.description, 
+                combatEvent.isCharacterHit, 
+                combatEvent.skillUsed, 
+                encodeURIComponent(combatEvent.when.toISOString()),
+                combatEvent.monsterID,
+                combatEvent.characterHP,
+                combatEvent.characterHPMax,
+                combatEvent.monsterHP,
+                combatEvent.monsterHPMax,
+                combatEvent.monsterLevel,
+                combatEvent.monsterRarity)
         }
 
         this.combatLog = []
     }
 
     processHitEventAnalytics(hit) {
-        console.log('a hit', hit)
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
         let actor = dw.findEntities((entity) => entity.id === hit.actor).shift()
         if (!hit.amount) {
@@ -166,7 +179,14 @@ class DWAnalytics {
                 description:`lvl ${hitSource.level} ${hitSource.md} [${hitSource.hp}/${hitSource.hpMax}] attacking lvl ${hitDest.level} ${hitDest.md} [${hitDest.hp}/${hitDest.hpMax}] for ${hit.amount} with ${hit.md ?? 'attack'}`,
                 isCharacterHit:isCharacterHit,
                 skillUsed:(hit.md ?? "attack"),
-                when:new Date()
+                when:new Date(),
+                monsterID:monster.id,
+                characterHP:this.dw.c.hp,
+                characterHPMax:this.dw.c.hpMax,
+                monsterHP:monster.hp,
+                monsterHPMax:monster.hpMax,
+                monsterLevel:monster.level,
+                monsterRarity:monster.r ?? 0
             })
         }
 
@@ -237,9 +257,9 @@ class DWAnalytics {
 
     }
 
-    async onCombatLogEvent(characterId, monsterName, damage, description, isCharacterHit, skillUsed, when) {
+    async onCombatLogEvent(characterId, monsterName, damage, description, isCharacterHit, skillUsed, when, monsterID, characterHP, characterHPMax, monsterHP, monsterHPMax, monsterLevel, monsterRarity) {
         console.log("💥 Combat Log Event");
-        const url = `${this.apiBaseUrl}/CombatLog?characterId=${characterId}&monsterName=${monsterName}&damage=${damage}&description=${description}&isCharacterHit=${isCharacterHit}&skillUsed=${skillUsed}&when=${when}`;
+        const url = `${this.apiBaseUrl}/CombatLog?characterId=${characterId}&monsterName=${monsterName}&damage=${damage}&description=${description}&isCharacterHit=${isCharacterHit}&skillUsed=${skillUsed}&when=${when}&monsterID=${monsterID}&characterHP=${characterHP}&characterHPMax=${characterHPMax}&monsterHP=${monsterHP}&monsterHPMax=${monsterHPMax}&monsterLevel=${monsterLevel}&monsterRarity=${monsterRarity}`;
         const data = await this.postJson(url);
         console.log("📜 Logged combat event.");
         return data;
