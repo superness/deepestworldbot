@@ -67,7 +67,7 @@ function getMaxDamageDealtBeforeOom() {
 function getMyBattleScore(useMaxHp = false) {
     let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
 
-    let potentialScore = getMyDmg() * hpScorePart
+    let potentialScore = getMyDmg() * hpScorePart + 800
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
     let dmgScorePart = Math.min(maxDmgScore, potentialScore)
@@ -77,7 +77,7 @@ function getMyBattleScore(useMaxHp = false) {
 }
 
 function getMyMaximumBattleScore() {
-    let potentialScore = (getMyDmg() * dw.c.hpMax)
+    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800
 
     return potentialScore
 }
