@@ -101,7 +101,7 @@ class DWAnalytics {
     pruneCombatLog() {
         // Trim out old combat events
         let now = new Date()
-        this.combatLog =  this.combatLog.filter(e => (now - e.when) < 5000)
+        this.combatLog =  this.combatLog.filter(e => (now - e.when) < 10000)
     }
 
     initialize(dw) {
