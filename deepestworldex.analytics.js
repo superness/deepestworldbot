@@ -82,6 +82,11 @@ function getMyMaximumBattleScore() {
     return potentialScore
 }
 
+
+
+
+
+
 // Analytics
 class DWAnalytics {
     constructor(character, apiBaseUrl, dw) {
@@ -240,9 +245,9 @@ class DWAnalytics {
         return data;
     }
 
-    async onDeath(nameOfMurderer, levelOfMurderer, maxHPOfMurderer, description = "death") {
+    async onDeath(nameOfMurderer, levelOfMurderer, maxHPOfMurderer, description = "death", when = encodeURIComponent(new Date().toISOString())) {
         console.log("💔  The weight of loss is heavy. Yet we endure, carrying their memory within us.");
-        const url = `${this.apiBaseUrl}/CharacterDeaths?characterId=${this.getDBId()}&murderer=${nameOfMurderer}&level=${levelOfMurderer}&maxHP=${maxHPOfMurderer}&description=${description}`;
+        const url = `${this.apiBaseUrl}/CharacterDeaths/CharacterDeathsEx?characterId=${this.getDBId()}&murderer=${nameOfMurderer}&level=${levelOfMurderer}&maxHP=${maxHPOfMurderer}&description=${description}&when=${when}`;
         const data = await this.postJson(url);
         console.log("⌛  The Sands of Time hold our sorrows. Our fallen friend, remembered.");
         return data;
@@ -256,9 +261,9 @@ class DWAnalytics {
         return data;
     }
 
-    async onKill(monsterName, monsterLevel, monsterRank, description = "kill") {
+    async onKill(monsterName, monsterLevel, monsterRank, description = "kill", when = encodeURIComponent(new Date().toISOString())) {
         console.log("⚔️  We meet adversity with courage. Each victory, a testament to our resilience.");
-        const url = `${this.apiBaseUrl}/MonsterKills?characterId=${this.getDBId()}&monsterName=${monsterName}&monsterLevel=${monsterLevel}&monsterRank=${monsterRank}&description=${description}`;
+        const url = `${this.apiBaseUrl}/MonsterKills/MonsterKillsEx?characterId=${this.getDBId()}&monsterName=${monsterName}&monsterLevel=${monsterLevel}&monsterRank=${monsterRank}&description=${description}&when=${when}`;
         const data = await this.postJson(url);
         console.log("🏆  We carve our path through the echoes of the past. Each challenge, a stepping stone.");
         return data;
