@@ -412,9 +412,9 @@ function getMonsterBattleScore(monster, useFullHp = false) {
 }
 
 function getMonsterDmg(monster) {
-    let dmg = 19 * Math.pow(monster.hpMax / 95, 0.5)
+    let dmg = 19 * Math.pow(1.1, monster.level)
     if (monster.r ?? 0 > 1) {
-        dmg += 1 + monster.r * 0.5
+        dmg *= 1 + monster.r * 0.5
     }
     return dmg
 }
@@ -447,18 +447,22 @@ function getMyBattleScore(useMaxHp = false) {
     let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
 
     // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = getMyDmg() * hpScorePart
+    let potentialScore = getMyDmg() * hpScorePart  + 800
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
     let dmgScorePart = Math.min(maxDmgScore, potentialScore)
     let battleScore = dmgScorePart
+
+    if(isNaN(battleScore)) battleScore = 0
 
     return battleScore
 }
 
 function getMyMaximumBattleScore() {
     // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = (getMyDmg() * dw.c.hpMax)
+    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800
+
+    if(isNaN(potentialScore)) potentialScore = 0
 
     return potentialScore
 }
@@ -1043,4 +1047,3 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
         ctx.fill()
     }
 }
-
