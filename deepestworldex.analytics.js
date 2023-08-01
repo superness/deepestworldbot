@@ -1,4 +1,86 @@
+// Skill and damage calcuation
+function getBestSkill(targetDistance) {
+    let bestSkill = null
+    let mostDamage = 0
+    for (let skill of dw.c.skills) {
+        if (skill.range < targetDistance) {
+            continue
+        }
+        let skillDamage = getSkillDamage(skill)
+        if (mostDamage < skillDamage) {
+            mostDamage = skillDamage
+            bestSkill = skill
+        }
+    }
+    return bestSkill
+}
 
+function getSkillDamage(skill) {
+    if (!skill)
+        return 0
+    let skillDmg = skill.acidDmg + skill.coldDmg + skill.fireDmg + skill.elecDmg + skill.physDmg
+    return skillDmg ?? 0
+}
+
+let eleNameTypes = ["fire", "elec", "cold", "acid"]
+let eleNameTypesRegex = new RegExp(eleNameTypes.join("|"), "i")
+
+function getMonsterBattleScore(monster, useFullHp = false) {
+    // Without a better damage calculation method let's give elemental monsters a scarier battle score
+    // assuming we are going to be weaker against ele dmg than phys
+    let isEle = eleNameTypesRegex.test(monster.md) || monster.terrain != 1
+    return (useFullHp ? monster.hpMax : monster.hp) * getMonsterDmg(monster) * (isEle ? 1.3 : 1)
+}
+
+function getMonsterDmg(monster) {
+    let dmg = 19 * Math.pow(monster.hpMax / 95, 0.5)
+    if (monster.r ?? 0 > 1) {
+        dmg += 1 + monster.r * 0.5
+    }
+    return dmg
+}
+
+function getMyDmg() {
+    let mySkillInfo = getBestSkill(0) ?? dw.c.skills.filter((s) => s.md).shift()
+    return getSkillDamage(mySkillInfo)
+}
+
+function getMaxDamageDealtBeforeOom() {
+    let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
+
+    if (!target) return Number.MAX_SAFE_INTEGER
+
+    let myBestSkill = getBestSkill(dw.distance(target, dw.c))
+    let mySkillInfo = myBestSkill ?? dw.c.skills.filter((s) => s.md).shift()
+
+    if (dw.c.mpRegen > mySkillInfo.cost) return Number.MAX_SAFE_INTEGER
+
+    if(dw.c.mp < mySkillInfo.cost) return 0
+
+    let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen)
+    let myDmg = getMyDmg()
+
+    let maxPossibleDmg = timeToOom * myDmg
+    return maxPossibleDmg
+}
+
+function getMyBattleScore(useMaxHp = false) {
+    let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
+
+    let potentialScore = getMyDmg() * hpScorePart
+    let maxTargetLife = getMaxDamageDealtBeforeOom()
+    let maxDmgScore = maxTargetLife * getMyDmg()
+    let dmgScorePart = Math.min(maxDmgScore, potentialScore)
+    let battleScore = dmgScorePart
+
+    return battleScore
+}
+
+function getMyMaximumBattleScore() {
+    let potentialScore = (getMyDmg() * dw.c.hpMax)
+
+    return potentialScore
+}
 
 // Analytics
 class DWAnalytics {
