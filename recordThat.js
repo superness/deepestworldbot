@@ -1,14 +1,16 @@
 
+
 // RecordThat
 class RecordThat {
     chunks = []
     mediaRecorder = null
-    maxChunks = -1
     recording = false
     discardRequested = false
     stopRequested = false
-    constructor(canvas, maxChunks = -1) {
-        this.maxChunks = maxChunks
+    startRequested = false
+    name = 'empty'
+    constructor(canvas, name) {
+        this.name = name
 
         var videoStream = canvas.captureStream(30)
         this.mediaRecorder = new MediaRecorder(videoStream)
@@ -22,10 +24,11 @@ class RecordThat {
         this.mediaRecorder.ondataavailable = (e) => {
             this.chunks.push(e.data)
 
-            if(this.stopRequested)
-            {
+
+            if(this.stopRequested) {
+                this.recording = false
                 this.mediaRecorder.stop()
-                this.stopRequested =false
+                this.stopRequested = false
             }
         }
         
@@ -47,26 +50,32 @@ class RecordThat {
         
           a.style = "display: none"
           a.href = videoURL
-          a.download = `capture-${new Date().toJSON().replaceAll(':','-').replaceAll('.','-')}.mp4`
+          a.download = `${this.name}-capture-${new Date().toJSON().replaceAll(':','-').replaceAll('.','-')}.mp4`
           a.click()
         
           window.URL.revokeObjectURL(videoURL)
         }
+
+        setInterval(() => {
+            if(this.startRequested) {
+                if(!this.recording) {
+                    this.recording = true
+                    this.mediaRecorder.start(1000)
+                }
+                this.startRequested = false
+            }
+        }, 100)
     }
 
     start() {
-        this.recording = true
-        this.mediaRecorder.start()
+        this.startRequested = true
     }
 
     stop() {
-        this.recording = false
-        this.mediaRecorder.stop()
         this.stopRequested = true
     }
 
     discard() {
-        this.chunks = []
         this.discardRequested = true
         this.stop()
     }
@@ -81,7 +90,7 @@ let recordThat = null
 
 dw.on("drawEnd", (ctx, cx, cy) => {
     if(recordThat == null) {
-        recordThat = new RecordThat(ctx.canvas)
+        recordThat = new RecordThat(ctx.canvas, dw.c.name.toLocaleLowerCase())
     }
 })
 
