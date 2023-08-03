@@ -6,6 +6,7 @@ class RecordThat {
     maxChunks = -1
     recording = false
     discardRequested = false
+    stopRequested = false
     constructor(canvas, maxChunks = -1) {
         this.maxChunks = maxChunks
 
@@ -19,9 +20,13 @@ class RecordThat {
 
         this.chunks = []
         this.mediaRecorder.ondataavailable = (e) => {
-            console.log(this)
-            console.log(this.chunks, e.data)
             this.chunks.push(e.data)
+
+            if(this.stopRequested)
+            {
+                this.mediaRecorder.stop()
+                this.stopRequested =false
+            }
         }
         
         this.mediaRecorder.onstop = (e) => {
@@ -57,6 +62,7 @@ class RecordThat {
     stop() {
         this.recording = false
         this.mediaRecorder.stop()
+        this.stopRequested = true
     }
 
     discard() {
