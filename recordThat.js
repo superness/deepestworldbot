@@ -12,7 +12,7 @@ class RecordThat {
     constructor(canvas, name) {
         this.name = name
 
-        var videoStream = canvas.captureStream(30)
+        var videoStream = canvas.captureStream(10)
         this.mediaRecorder = new MediaRecorder(videoStream)
         
         var a = document.createElement("a")
@@ -37,7 +37,7 @@ class RecordThat {
           {
             return
           }
-          if(this.discardRequested)
+          if(this.discardRequested && !this.stopRequested)
           {
             this.discardRequested = false
             this.chunks = []
@@ -109,9 +109,10 @@ setInterval(() => {
     else
     {
         // If I am not in combat and don't have a target then discard recording
-        if(recordThat.getIsRecording())
+        if(!recordThat.stopRequested && recordThat.getIsRecording())
         {
-            recordThat.discard()
+            recordThat.stopRequested = true
+            setTimeout(() => recordThat.discard(), 100)
         }
     }
 }, 100)
