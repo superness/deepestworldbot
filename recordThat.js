@@ -1,18 +1,16 @@
 
-
 // RecordThat
 class RecordThat {
     chunks = []
     mediaRecorder = null
+    maxChunks = -1
     recording = false
     discardRequested = false
     stopRequested = false
-    startRequested = false
-    name = 'empty'
-    constructor(canvas, name) {
-        this.name = name
+    constructor(canvas, maxChunks = -1) {
+        this.maxChunks = maxChunks
 
-        var videoStream = canvas.captureStream(10)
+        var videoStream = canvas.captureStream(30)
         this.mediaRecorder = new MediaRecorder(videoStream)
         
         var a = document.createElement("a")
@@ -24,11 +22,10 @@ class RecordThat {
         this.mediaRecorder.ondataavailable = (e) => {
             this.chunks.push(e.data)
 
-
-            if(this.stopRequested) {
-                this.recording = false
+            if(this.stopRequested)
+            {
                 this.mediaRecorder.stop()
-                this.stopRequested = false
+                this.stopRequested =false
             }
         }
         
@@ -37,7 +34,7 @@ class RecordThat {
           {
             return
           }
-          if(this.discardRequested && !this.stopRequested)
+          if(this.discardRequested)
           {
             this.discardRequested = false
             this.chunks = []
@@ -50,32 +47,26 @@ class RecordThat {
         
           a.style = "display: none"
           a.href = videoURL
-          a.download = `${this.name}-capture-${new Date().toJSON().replaceAll(':','-').replaceAll('.','-')}.mp4`
+          a.download = `capture-${new Date().toJSON().replaceAll(':','-').replaceAll('.','-')}.mp4`
           a.click()
         
           window.URL.revokeObjectURL(videoURL)
         }
-
-        setInterval(() => {
-            if(this.startRequested) {
-                if(!this.recording) {
-                    this.recording = true
-                    this.mediaRecorder.start(1000)
-                }
-                this.startRequested = false
-            }
-        }, 100)
     }
 
     start() {
-        this.startRequested = true
+        this.recording = true
+        this.mediaRecorder.start()
     }
 
     stop() {
+        this.recording = false
+        this.mediaRecorder.stop()
         this.stopRequested = true
     }
 
     discard() {
+        this.chunks = []
         this.discardRequested = true
         this.stop()
     }
@@ -90,7 +81,7 @@ let recordThat = null
 
 dw.on("drawEnd", (ctx, cx, cy) => {
     if(recordThat == null) {
-        recordThat = new RecordThat(ctx.canvas, dw.c.name.toLocaleLowerCase())
+        recordThat = new RecordThat(ctx.canvas)
     }
 })
 
@@ -109,10 +100,9 @@ setInterval(() => {
     else
     {
         // If I am not in combat and don't have a target then discard recording
-        if(!recordThat.stopRequested && recordThat.getIsRecording())
+        if(recordThat.getIsRecording())
         {
-            recordThat.stopRequested = true
-            setTimeout(() => recordThat.discard(), 100)
+            recordThat.discard()
         }
     }
 }, 100)
