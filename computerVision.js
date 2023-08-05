@@ -347,8 +347,6 @@ setInterval(function () {
     let mpRequired = getMpRequiredToDefeatMonster(target)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
-    else if(gearTesting)
-        optimalMonsterRangeBuffer = 1
     else
         optimalMonsterRangeBuffer = 0
 }, 100)
@@ -583,11 +581,6 @@ setInterval(function () {
     }
 
     let monsterTargettingMe = dw.findClosestMonster((e) => e.targetId == dw.c.id)
-    if(gearTesting && !dw.c.comabt && !monsterTargettingMe)
-    {
-        return
-    }
-
     let target = dw.findClosestMonster((m) => isValidTarget(m))
     if ((!target || target.hp == target.hpMax) && monsterTargettingMe && target != monsterTargettingMe) {
         target = monsterTargettingMe
