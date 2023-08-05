@@ -3,7 +3,7 @@ dw.set("showComputerVision", showComputerVision)
 let optimalMonsterRange = dw.c.skills.filter((s) => s).shift().range
 let optimalMonsterRangeBuffer = 0
 let gridUpdatePeriod = 7
-let gridWidth = 24
+let gridWidth = 16
 let gridHeight = 16
 let gridArrWidth = gridWidth * 2
 let gridArrHeight = gridHeight * 2
@@ -62,7 +62,7 @@ function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []
     }
     return true
 }
-function hasLineOfSafety(target, from = dw.character, dangerousEnemyPredicate = e => e.hostile && !isValidTarget(e)) {
+function hasLineOfSafety(target, from = dw.character, dangerousEnemyPredicate = e => e.hostile && e.id != dw.targetId) {
     if (!target)
         return false
     let hostlies = dw.findEntities(dangerousEnemyPredicate)
@@ -82,27 +82,15 @@ function hasLineOfSafety(target, from = dw.character, dangerousEnemyPredicate = 
             monsterTest.x += entitiesDirMap[monster.id].x
             monsterTest.y += entitiesDirMap[monster.id].y
         }
-        if (dw.distance(monsterTest, dw.c) <= scaryMonsterRadius) {
-            let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
-            let vecToMonster = { x: monsterTest.x - from.x, y: monsterTest.y - from.y }
-            let vecToSpot = { x: target.x - from.x, y: target.y - from.y }
-            let sameDir = dot([vecToMonster.x, vecToMonster.y], [vecToSpot.x, vecToSpot.y]) < 0
-            if (sameDir)
-                continue
-        }
         let distToTarget = distToSegment(monster, from, target)
-        if (distToTarget < scaryMonsterRadius) {
-            return false
-        }
-        distToTarget = distToSegment(monsterTest, from, target)
         if (distToTarget < scaryMonsterRadius) {
             return false
         }
     }
     return true
 }
-function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
-    let nearMonsters = monsters.filter((m) => dw.distance({ x, y }, m) < radius)
+function getSpotInfo(x, y, monsters, nonTraversableEntities) {
+    let nearMonsters = monsters.filter((m) => dw.distance({ x, y }, m))
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     let spotValue = 50
     let spotType = "open"
@@ -140,7 +128,7 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
                         spotType = "fallback"
                     }
                 }
-                if (dist < radius && !hasLineOfSight({ x, y }, monsterTest, nonTraversableEntities)) {
+                if (!hasLineOfSight({ x, y }, monsterTest, nonTraversableEntities)) {
                     delta += 100
                     spotType = "partially-obstructed"
                 }
@@ -240,7 +228,7 @@ function* yieldVisionGridUpdatesOnOldSpots() {
             squareHeight2 = gridHeight / gridArrHeight
             let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
             let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
-            let spotInfo = getSpotInfo(x, y, 24, monsters, nonTraversableEntities)
+            let spotInfo = getSpotInfo(x, y, monsters, nonTraversableEntities)
             yield { i: spot.i, j: spot.j, data: { x, y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
         }
         fullGridProcessed = true
@@ -350,6 +338,12 @@ setInterval(function () {
         optimalMonsterRangeBuffer = 0
         return
     }
+    
+    if(dw.c.combat) {
+        optimalMonsterRangeBuffer = 0
+        return
+    }
+
     let mpRequired = getMpRequiredToDefeatMonster(target)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
@@ -362,11 +356,9 @@ setInterval(function () {
 function isValidTarget(entity, levelCheck = dw.c.mission === undefined) {
     if (entity.targetId == dw.c.id)
         return true
+    if (!hasLineOfSight(entity, dw.c, getNonTraversableEntities()))
+        return false
     if (getMonsterBattleScore(entity) > getMyBattleScore())
-        return false
-    if (levelCheck && entity.level < targetZoneLevel - 2 && entity.r === 0 && !entity.hostile)
-        return false
-    if (dw.c.mission === undefined && entity.hostile && (levelCheck && entity.level < targetZoneLevel - 2))
         return false
     let mpRequired = getMpRequiredToDefeatMonster(entity)
     if (dw.c.mp < mpRequired)
@@ -448,10 +440,9 @@ function getMaxDamageDealtBeforeOom() {
 function getMyBattleScore(useMaxHp = false) {
     let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
 
-    // +1200 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = getMyDmg() * hpScorePart + (1200 * ((useMaxHp ? dw.c.hpMax : dw.c.hp) /dw.c.hpMax))
+    let potentialScore = (getMyDmg() + 12) * hpScorePart
     let maxTargetLife = getMaxDamageDealtBeforeOom()
-    let maxDmgScore = maxTargetLife * getMyDmg()
+    let maxDmgScore = maxTargetLife * (getMyDmg())
     let dmgScorePart = Math.min(maxDmgScore, potentialScore)
     let battleScore = dmgScorePart
 
@@ -461,8 +452,7 @@ function getMyBattleScore(useMaxHp = false) {
 }
 
 function getMyMaximumBattleScore() {
-    // +1200 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = (getMyDmg() * dw.c.hpMax) + 1200
+    let potentialScore = ((getMyDmg() + 12) * dw.c.hpMax)
 
     if(isNaN(potentialScore)) potentialScore = 0
 
@@ -474,14 +464,13 @@ let moveUpdatePeriod = 30
 let movePeriod = 100
 let searchOffset = 2
 let searchOffsetMission = 1
-let recencyAvoidanceRadius = 3
+let recencyAvoidanceRadius = 5
 let recentSpots = []
 setInterval(function () {
     let bestSpot = getGoodSpots(15).shift()
     bestSpot = bestSpot ?? getGoodSpots(40).shift()
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     let moveToSpotIsClose = dw.distance(moveToSpot, dw.c) < 0.4 
-    
 
     let isSpotSafe = hasLineOfSafety(moveToSpot, dw.c)
     let targetIsGoo = target && target.md.toLowerCase().includes("goo") && dw.c.combat
@@ -531,10 +520,10 @@ setInterval(function () {
 
 setInterval(function () {
     recentSpots.shift()
-    while (recentSpots.length > 16) {
+    while (recentSpots.length > 8) {
         recentSpots.shift()
     }
-}, 3333)
+}, 4444)
 
 function getSpotRecentlyUsed(x, y) {
     for (let recentSpot of recentSpots) {
@@ -589,14 +578,29 @@ setInterval(function () {
 // Attack stuff
 setInterval(function () {
     if (dw.get(`${dw.name}_skipAttacks`) == true)
+    {
         return
-    let target = dw.findClosestMonster((m) => isValidTarget(m))
+    }
+
     let monsterTargettingMe = dw.findClosestMonster((e) => e.targetId == dw.c.id)
-    if ((!target || target.hp == target.hpMax) && monsterTargettingMe) {
+    if(gearTesting && !dw.c.comabt && !monsterTargettingMe)
+    {
+        return
+    }
+
+    let target = dw.findClosestMonster((m) => isValidTarget(m))
+    if ((!target || target.hp == target.hpMax) && monsterTargettingMe && target != monsterTargettingMe) {
         target = monsterTargettingMe
+        if(!recordThat.getIsRecording())
+        {
+            recordThat.start()
+        }
     }
     if (!target)
+    {
         return
+    }
+    
     dw.setTarget({ id: target.id })
     let distTarget = dw.distance(target, dw.c)
     let skillUse = getBestSkill(distTarget)
@@ -760,13 +764,17 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         }
     }
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-    ctx.lineWidth = 2
+    ctx.lineWidth = 4
     if (moveToSpot) {
-        drawLineToPOI(ctx, cx, cy, moveToSpot, `rgb(0, 255, 0, 0.5`)
-        drawLineToPOI(ctx, cx, cy, movingToSpot, `rgb(0, 0, 255, 0.5)`)
+        drawLineToPOI(ctx, cx, cy, moveToSpot, `rgb(0, 255, 0, 0.9`)
+        drawLineToPOI(ctx, cx, cy, movingToSpot, `rgb(231, 0, 255, 0.9)`)
     }
-    drawLineToPOI(ctx, cx, cy, target, `rgb(245, 239, 66, 0.5)`)
+    drawLineToPOI(ctx, cx, cy, target, `rgb(245, 239, 66, 0.9)`, {x:dw.c.x, y:dw.c.y - 0.5})
+
+    let monstersTargettingMe = dw.findEntities(e => e.targetId && e.targetId == dw.c.id)
+    for(var monster of monstersTargettingMe) {
+        drawLineToPOI(ctx, cx,cy, dw.c, 'white', {x:monster.x, y:monster.y - 0.5})
+    }
 })
 dw.on("drawEnd", (ctx, cx, cy) => {
     ctx.strokeStyle = "green"
@@ -980,41 +988,45 @@ dw.on("drawEnd", (ctx, cx, cy) => {
             ctx.fillStyle = "red"
         }
         let fontSize = 28 * combatTextTween(text.life / text.maxLife)
-        ctx.textAlign = "left"
-        ctx.font = `bold ${fontSize}px arial`
-        ctx.strokeText(text.text, x, y)
-        ctx.fillText(text.text, x, y)
-        let textWidth = ctx.measureText(text.text).width
-        const offscreen = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height)
-        const offCtx = offscreen.getContext("2d")
-        const offscreen2 = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height)
-        const offCtx2 = offscreen2.getContext("2d")
-        offCtx.textAlign = "left"
-        offCtx2.textAlign = "left"
-        offCtx.fillStyle = "blue"
-        offCtx2.fillStyle = "blue"
-        let squarePath = new Path2D()
-        squarePath.rect(x, y - fontSize * 0.2, textWidth, fontSize * 0.6)
-        squarePath.closePath()
-        offCtx.clip(squarePath)
-        offCtx.fillStyle = `rgb(245, 106, 32, 0.6)`
-        offCtx.font = `bold ${fontSize}px arial`
-        offCtx.fillText(text.text, x, y)
-        let squarePath2 = new Path2D()
-        squarePath2.rect(x, y - fontSize * 0.5, textWidth, fontSize)
-        squarePath2.closePath()
-        offCtx2.clip(squarePath2)
-        offCtx2.fillStyle = `rgb(245, 106, 32, 0.3)`
-        offCtx2.font = `bold ${fontSize}px arial`
-        offCtx2.fillText(text.text, x - textWidth / 2, y)
-        if (offCtx.canvas.width > 0 && offCtx.canvas.height > 0) {
-            ctx.drawImage(offscreen2.transferToImageBitmap(), 0, 0)
-            ctx.drawImage(offscreen.transferToImageBitmap(), 0, 0)
-        }
+        drawText(ctx, fontSize, text.text, x, y)
         text.life -= seconds
     }
     floatingText = floatingText.filter((t) => t.life > 0)
 })
+
+function drawText(ctx, fontSize, text, x, y) {
+    ctx.textAlign = "left"
+    ctx.font = `bold ${fontSize}px arial`
+    ctx.strokeText(text, x, y)
+    ctx.fillText(text, x, y)
+    let textWidth = ctx.measureText(text).width
+    const offscreen = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height)
+    const offCtx = offscreen.getContext("2d")
+    const offscreen2 = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height)
+    const offCtx2 = offscreen2.getContext("2d")
+    offCtx.textAlign = "left"
+    offCtx2.textAlign = "left"
+    offCtx.fillStyle = "blue"
+    offCtx2.fillStyle = "blue"
+    let squarePath = new Path2D()
+    squarePath.rect(x, y - fontSize * 0.2, textWidth, fontSize * 0.6)
+    squarePath.closePath()
+    offCtx.clip(squarePath)
+    offCtx.fillStyle = `rgb(245, 106, 32, 0.6)`
+    offCtx.font = `bold ${fontSize}px arial`
+    offCtx.fillText(text, x, y)
+    let squarePath2 = new Path2D()
+    squarePath2.rect(x, y - fontSize * 0.5, textWidth, fontSize)
+    squarePath2.closePath()
+    offCtx2.clip(squarePath2)
+    offCtx2.fillStyle = `rgb(245, 106, 32, 0.3)`
+    offCtx2.font = `bold ${fontSize}px arial`
+    offCtx2.fillText(text, x - textWidth / 2, y)
+    if (offCtx.canvas.width > 0 && offCtx.canvas.height > 0) {
+        ctx.drawImage(offscreen2.transferToImageBitmap(), 0, 0)
+        ctx.drawImage(offscreen.transferToImageBitmap(), 0, 0)
+    }
+}
 
 function combatTextTween(x) {
     return x * easeInOutElastic(x) + (1 - x) * easeInOutQuint(x)
@@ -1045,3 +1057,4 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
         ctx.fill()
     }
 }
+
