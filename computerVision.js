@@ -130,7 +130,7 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
                         spotType = "fallback"
                     }
                 } else if (dist < optimalMonsterRange + optimalMonsterRangeBuffer) {
-                    delta -= 40 * (dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
+                    delta -= 40
                     if (spotType == "open") {
                         spotType = "preference"
                     }
@@ -152,7 +152,7 @@ function getSpotInfo(x, y, radius, monsters, nonTraversableEntities) {
                 if (targetGooOtherGooCombat && !monster.hostile) {
                     scaryMonsterRadius = 3
                 }
-                if (!hasLineOfSafety(dw.c, {x:x, y:y}, e => e.id == monster.id) && doAvoid && hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities)) {
+                if (!hasLineOfSafety({x:x, y:y}, dw.c, e => e.id == monster.id) && doAvoid && hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities)) {
                     spotValue += 500
                     spotType = "dangerous"
                 }
@@ -240,7 +240,7 @@ function* yieldVisionGridUpdatesOnOldSpots() {
             squareHeight2 = gridHeight / gridArrHeight
             let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
             let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
-            let spotInfo = getSpotInfo(x, y, Math.max(optimalMonsterRange + optimalMonsterRangeBuffer, scaryMonsterRadius), monsters, nonTraversableEntities)
+            let spotInfo = getSpotInfo(x, y, 24, monsters, nonTraversableEntities)
             yield { i: spot.i, j: spot.j, data: { x, y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
         }
         fullGridProcessed = true
@@ -263,7 +263,7 @@ async function updateVisionGridOld() {
         let y = gridTop2 + visionGridUpdate.j * squareHeight2 - squareHeight2 / 2
         visionGrid[visionGridUpdate.i][visionGridUpdate.j] = { x, y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() }
     }
-    await sleep(Math.max(0, gridUpdatePeriod - sw.ElapsedMilliseconds))
+    await sleep(Math.max(1, gridUpdatePeriod - sw.ElapsedMilliseconds))
     updateVisionGridOld()
 }
 setTimeout(updateVisionGridOld, 100)
@@ -353,18 +353,20 @@ setInterval(function () {
     let mpRequired = getMpRequiredToDefeatMonster(target)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
+    else if(gearTesting)
+        optimalMonsterRangeBuffer = 1
     else
         optimalMonsterRangeBuffer = 0
 }, 100)
 
-function isValidTarget(entity, levelCheck = dw.c.mission === void 0) {
+function isValidTarget(entity, levelCheck = dw.c.mission === undefined) {
     if (entity.targetId == dw.c.id)
         return true
     if (getMonsterBattleScore(entity) > getMyBattleScore())
         return false
     if (levelCheck && entity.level < targetZoneLevel - 2 && entity.r === 0 && !entity.hostile)
         return false
-    if (dw.c.mission === void 0 && entity.hostile && (levelCheck && entity.level < targetZoneLevel - 2))
+    if (dw.c.mission === undefined && entity.hostile && (levelCheck && entity.level < targetZoneLevel - 2))
         return false
     let mpRequired = getMpRequiredToDefeatMonster(entity)
     if (dw.c.mp < mpRequired)
@@ -446,8 +448,8 @@ function getMaxDamageDealtBeforeOom() {
 function getMyBattleScore(useMaxHp = false) {
     let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
 
-    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = getMyDmg() * hpScorePart  + 800
+    // +1200 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
+    let potentialScore = getMyDmg() * hpScorePart + (1200 * ((useMaxHp ? dw.c.hpMax : dw.c.hp) /dw.c.hpMax))
     let maxTargetLife = getMaxDamageDealtBeforeOom()
     let maxDmgScore = maxTargetLife * getMyDmg()
     let dmgScorePart = Math.min(maxDmgScore, potentialScore)
@@ -459,8 +461,8 @@ function getMyBattleScore(useMaxHp = false) {
 }
 
 function getMyMaximumBattleScore() {
-    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800
+    // +1200 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
+    let potentialScore = (getMyDmg() * dw.c.hpMax) + 1200
 
     if(isNaN(potentialScore)) potentialScore = 0
 
@@ -501,20 +503,15 @@ setInterval(function () {
         let goodAltSpots = []
         let goodTertSpots = []
         let distFromSpawn = dw.distance(dw.c, { x: 0, y: 0 })
-        //console.log('target zone level', zoneLevel, targetLevel, zoneDiff, distFromSpawn)
         if (zoneDiff > 0 && !dw.c.mission) {
             goodAltSpots = goodFarSpots.filter((p) => dw.distance(p, { x: 0, y: 0 }) < distFromSpawn)
-            //console.log('choosing a spot closer to spawn because zone diff is ', zoneDiff)
         } else if (zoneDiff < 0 && !dw.c.mission) {
             goodAltSpots = goodFarSpots.filter((p) => dw.distance(p, { x: 0, y: 0 }) > distFromSpawn)
-            //console.log('choosing a spot further from spawn because zone diff is ', zoneDiff)
         }
         bestSpot = goodTertSpots.shift() ?? goodAltSpots.shift() ?? goodFartherSpots.shift() ?? goodFarSpots.shift() ?? goodSpots.shift() ?? goodSpotsNoAvoidRecent.shift()
         if (dw.c.mission) {
             bestSpot = goodFartherSpots.shift() ?? goodFarSpots.shift() ?? goodSpots.shift() ?? goodSpotsNoAvoidRecent.shift()
         }
-
-        //console.log('chosen best spot is this far away', dw.distance(bestSpot, {x:0, y:0}))
     }
     moveToSpot = bestSpot ?? moveToSpot
 }, moveUpdatePeriod)
@@ -534,10 +531,10 @@ setInterval(function () {
 
 setInterval(function () {
     recentSpots.shift()
-    while (recentSpots.length > 33) {
+    while (recentSpots.length > 16) {
         recentSpots.shift()
     }
-}, 6666)
+}, 3333)
 
 function getSpotRecentlyUsed(x, y) {
     for (let recentSpot of recentSpots) {
@@ -553,7 +550,7 @@ function getGoodSpots(range, avoidRecent = false) {
     let now = new Date()
     for (let i = 0; i < gridArrWidth; ++i) {
         for (let j = 0; j < gridArrHeight; ++j) {
-            if (visionGrid[i][j].threat <= range && now - visionGrid[i][j].lastUpdate < gridUpdatePeriod * 3) {
+            if (visionGrid[i][j].threat <= range && (now - visionGrid[i][j].lastUpdate < gridUpdatePeriod * 3)) {
                 if (avoidRecent && getSpotRecentlyUsed(visionGrid[i][j].x, visionGrid[i][j].y))
                     continue
                 goodSpots.push(visionGrid[i][j])
@@ -653,7 +650,7 @@ setInterval(function () {
             entititiesSmoothPosMap[entity.id].y += dy / 10
         }
     }
-}, 10)
+}, 4)
 
 function Stopwatch() {
     let sw = this
@@ -763,6 +760,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         }
     }
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
+     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     ctx.lineWidth = 2
     if (moveToSpot) {
         drawLineToPOI(ctx, cx, cy, moveToSpot, `rgb(0, 255, 0, 0.5`)
