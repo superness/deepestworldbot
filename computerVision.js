@@ -589,7 +589,7 @@ setInterval(function () {
         return
     }
 
-    if ((now.getTime() - lastCombat.getTime()) > 1000 * 10) {
+    if ((now.getTime() - lastCombat.getTime()) > 1000 * 30) {
         targetZoneLevel = Math.max(1, targetZoneLevel - 1)
         lastCombat = new Date()
         dw.log(`Reducing target zone level to '${targetZoneLevel}' because of stale combat`)
