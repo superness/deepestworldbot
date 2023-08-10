@@ -110,7 +110,7 @@ function getSpotInfo(x, y, monsters, nonTraversableEntities) {
                 monsterTest.y += entitiesDirMap[monster.id].y
             }
             let dist = Math.max(dw.distance({ x, y }, monster))
-            if (isValidTarget(monster) && (!target || target && target.id == monster.id)) {
+            if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && isValidTarget(monster)) {
                 let delta = 0
                 if (dist < optimalMonsterRange - 0.25 + optimalMonsterRangeBuffer && optimalMonsterRange + optimalMonsterRangeBuffer > optimalMonsterRange - 0.25) {
                     delta += 80 * (1 - dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
