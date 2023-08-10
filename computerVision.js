@@ -275,8 +275,6 @@ const workerCode = `
             return false
         let monsterBattleScore = getMonsterBattleScore(entity, c)
         let myBattleScore = getMyBattleScore(monsters, c)
-        if (monsterBattleScore < myBattleScore / 3)
-            return false
         if (monsterBattleScore > myBattleScore)
             return false
         let mpRequired = getMpRequiredToDefeatMonster(entity)
