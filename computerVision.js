@@ -89,67 +89,6 @@ function hasLineOfSafety(target, from = dw.character, dangerousEnemyPredicate = 
     }
     return true
 }
-function getSpotInfo(x, y, monsters, nonTraversableEntities) {
-    let nearMonsters = monsters.filter((m) => dw.distance({ x, y }, m))
-    let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-    let spotValue = 50
-    let spotType = "open"
-    if (!hasLineOfSight({ x, y }, dw.c, nonTraversableEntities)) {
-        spotValue = 555
-        spotType = "obstructed"
-    }
-    if (!hasLineOfSafety({ x, y }, dw.c)) {
-        spotValue = 555
-        spotType = "dangerous"
-    }
-    if (spotType != "obstructed" && spotType != "dangerous") {
-        for (let monster of nearMonsters) {
-            let monsterTest = { x: monster.x, y: monster.y }
-            if (monster.id in entitiesDirMap && entitiesDirMap[monster.id].x) {
-                monsterTest.x += entitiesDirMap[monster.id].x
-                monsterTest.y += entitiesDirMap[monster.id].y
-            }
-            let dist = Math.max(dw.distance({ x, y }, monster))
-            if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && isValidTarget(monster)) {
-                let delta = 0
-                if (dist < optimalMonsterRange - 0.25 + optimalMonsterRangeBuffer && optimalMonsterRange + optimalMonsterRangeBuffer > optimalMonsterRange - 0.25) {
-                    delta += 80 * (1 - dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
-                    if (spotType == "open") {
-                        spotType = "fallback"
-                    }
-                } else if (dist < optimalMonsterRange + optimalMonsterRangeBuffer) {
-                    delta -= 40
-                    if (spotType == "open") {
-                        spotType = "preference"
-                    }
-                } else if (dist < optimalMonsterRange + optimalMonsterRangeBuffer + 0.5) {
-                    delta += 50
-                    if (spotType == "open") {
-                        spotType = "fallback"
-                    }
-                }
-                if (!hasLineOfSight({ x, y }, monsterTest, nonTraversableEntities)) {
-                    delta += 100
-                    spotType = "partially-obstructed"
-                }
-                spotValue += delta
-            } else {
-                let targetGooOtherGooCombat = target && target.md.toLowerCase().includes("goo") && monster.md.toLowerCase().includes("goo") && dw.c.combat
-                let doAvoid = monster.hostile || targetGooOtherGooCombat
-                let prevScaryRadius = scaryMonsterRadius
-                if (targetGooOtherGooCombat && !monster.hostile) {
-                    scaryMonsterRadius = 3
-                }
-                if (!hasLineOfSafety({x:x, y:y}, dw.c, e => e.id == monster.id) && doAvoid && hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities)) {
-                    spotValue += 500
-                    spotType = "dangerous"
-                }
-                scaryMonsterRadius = prevScaryRadius
-            }
-        }
-    }
-    return { positionValue: spotValue, type: spotType, lastUpdate: new Date() }
-}
 function getNonTraversableEntities() {
     let nonTraversableEntities = []
     let blockingEntities = dw.findEntities((e) => !e.ai && !e.player && !e.ore && !e.md.includes("portal"))
@@ -201,63 +140,407 @@ for (let i = 0; i < visionGrid.length; ++i) {
         visionGrid[i][j] = { x, y, threat: 555, type: "dangerous", lastUpdate: new Date() }
     }
 }
-let fullGridProcessed = false
-function* yieldVisionGridUpdatesOnOldSpots() {
-    while (true) {
-        let monsters = dw.findEntities((e) => e.ai)
-        let nonTraversableEntities = getNonTraversableEntities()
-        let visionGridEx = []
-        for (let i = 0; i < gridArrWidth; ++i) {
-            for (let j = 0; j < gridArrHeight; ++j) {
-                let distPlayer = dw.distance(visionGrid[i][j], dw.c)
-                let distUse = distPlayer
-                distUse /= 16
-                distUse += visionGrid[i][j].threat / 555
-                visionGridEx.push({ i, j, data: visionGrid[i][j], dist: distUse })
+
+
+const workerCode = `
+    function Stopwatch() {
+        let sw = this
+        let start = null
+        let stop = null
+        let isRunning = false
+        sw.__defineGetter__("ElapsedMilliseconds", function () {
+            return (isRunning ? new Date() : stop) - start
+        })
+        sw.__defineGetter__("IsRunning", function () {
+            return isRunning
+        })
+        sw.Start = function () {
+            if (isRunning)
+                return
+            start = new Date()
+            stop = null
+            isRunning = true
+        }
+        sw.Stop = function () {
+            if (!isRunning)
+                return
+            stop = new Date()
+            isRunning = false
+        }
+        sw.Reset = function () {
+            start = isRunning ? new Date() : null
+            stop = null
+        }
+        sw.Restart = function () {
+            isRunning = true
+            sw.Reset()
+        }
+    }
+
+    // Skill and damage calcuation
+    function getBestSkill(targetDistance, c) {
+        let bestSkill = null
+        let mostDamage = 0
+        for (let skill of c.skills) {
+            if (skill.range < targetDistance) {
+                continue
+            }
+            let skillDamage = getSkillDamage(skill)
+            if (mostDamage < skillDamage) {
+                mostDamage = skillDamage
+                bestSkill = skill
             }
         }
-        let now = new Date()
-        visionGridEx.sort((a, b) => (now.getTime() - b.data.lastUpdate.getTime()) / b.dist - (now.getTime() - a.data.lastUpdate.getTime()) / a.dist)
-        for (let spot of visionGridEx) {
-            now = new Date()
-            let gridLeft2 = dw.c.x - gridWidth / 2
-            let gridTop2 = dw.c.y - gridHeight / 2
-            let squareWidth2 = gridWidth / gridArrWidth
-            let squareHeight2 = gridHeight / gridArrHeight
-            squareWidth2 = gridWidth / gridArrWidth
-            squareHeight2 = gridHeight / gridArrHeight
-            let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
-            let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
-            let spotInfo = getSpotInfo(x, y, monsters, nonTraversableEntities)
-            yield { i: spot.i, j: spot.j, data: { x, y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
-        }
-        fullGridProcessed = true
-    }
-}
-async function updateVisionGridOld() {
-    let sw = new Stopwatch()
-    sw.Start()
-    let visionGridUpdateYielderOld = yieldVisionGridUpdatesOnOldSpots(0, 100)
-    fullGridProcessed = false
-    while (sw.ElapsedMilliseconds < gridUpdatePeriod && !fullGridProcessed) {
-        let visionGridUpdate = visionGridUpdateYielderOld.next().value
-        let gridLeft2 = dw.c.x - gridWidth / 2
-        let gridTop2 = dw.c.y - gridHeight / 2
-        let squareWidth2 = gridWidth / gridArrWidth
-        let squareHeight2 = gridHeight / gridArrHeight
-        squareWidth2 = gridWidth / gridArrWidth
-        squareHeight2 = gridHeight / gridArrHeight
-        let x = gridLeft2 + visionGridUpdate.i * squareWidth2 - squareWidth2 / 2
-        let y = gridTop2 + visionGridUpdate.j * squareHeight2 - squareHeight2 / 2
-        visionGrid[visionGridUpdate.i][visionGridUpdate.j] = { x, y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() }
+        return bestSkill
     }
     
-    let sleepTime = Math.max(1, gridUpdatePeriod - sw.ElapsedMilliseconds)
-    sleepTime = Math.max(100 - sw.ElapsedMilliseconds, sleepTime)
-    await sleep(sleepTime)
-    updateVisionGridOld()
+    let healingRuneParts = ['heal', 'shield']
+    
+    function getSkillDamage(skill) {
+        if (!skill)
+            return 0
+        if(healingRuneParts.filter(p => skill.md.toLowerCase().includes(p)).length > 0)
+            return 0
+        let skillDmg = skill.acid + skill.cold + skill.fire + skill.elec + skill.phys
+        return skillDmg ?? 0
+    }    
+    
+    let eleNameTypes = ["fire", "elec", "cold", "acid"]
+    let eleNameTypesRegex = new RegExp(eleNameTypes.join("|"), "i")
+    function getMonsterBattleScore(monster, c, useFullHp = false) {
+        // Without a better damage calculation method let's give elemental monsters a scarier battle score
+        // assuming we are going to be weaker against ele dmg than phys
+        let isEle = eleNameTypesRegex.test(monster.md) || monster.terrain != 1
+        return Math.min((useFullHp ? monster.hpMax : monster.hp) * getMonsterDmg(monster) * (isEle ? 1.3 : 1))
+    }
+    
+    function getMonsterDmg(monster) {
+        let dmg = 19 * Math.pow(1.1, monster.level)
+        if (monster.r ?? 0 > 1) {
+            dmg *= 1 + monster.r * 0.5
+        }
+        return dmg
+    }
+    
+    function getMyDmg(c) {
+        let mySkillInfo = getBestSkill(0, c) ?? c.skills.filter((s) => s.md).shift()
+        return getSkillDamage(mySkillInfo)
+    }
+    
+    function getMaxDamageDealtBeforeOom(monsters, c) {
+        let target = monsters.filter((entity) => entity.id === targetId).shift()
+    
+        if (!target) return Number.MAX_SAFE_INTEGER
+    
+        let myBestSkill = getBestSkill(distance(target, c), c)
+        let mySkillInfo = myBestSkill ?? c.skills.filter((s) => s.md).shift()
+    
+        if (c.mpRegen > mySkillInfo.cost) return Number.MAX_SAFE_INTEGER
+    
+        if(c.mp < mySkillInfo.cost) return 0
+    
+        let timeToOom = c.mp / (mySkillInfo.cost - c.mpRegen)
+        let myDmg = getMyDmg(c)
+    
+        let maxPossibleDmg = timeToOom * myDmg
+        return maxPossibleDmg
+    }
+    
+    function getMyBattleScore(monsters, c, useMaxHp = false) {
+        let hpScorePart = (useMaxHp ? c.hpMax : c.hp)
+    
+        let potentialScore = getMyDmg(c) * hpScorePart
+        let maxTargetLife = getMaxDamageDealtBeforeOom(monsters, c)
+        let maxDmgScore = maxTargetLife * (getMyDmg(c))
+        let dmgScorePart = Math.min(maxDmgScore, potentialScore)
+        let battleScore = dmgScorePart
+    
+        if(isNaN(battleScore)) battleScore = 0
+    
+        return battleScore
+    }
+    
+    function getMyMaximumBattleScore(c) {
+        let potentialScore = (getMyDmg(c) * c.hpMax)
+    
+        if(isNaN(potentialScore)) potentialScore = 0
+    
+        return potentialScore
+    }
+
+    function isValidTarget(entity, nonTraversableEntities, c, monsters ) {
+        if (entity.targetId == c.id)
+            return true
+        if (!hasLineOfSight(entity, c, nonTraversableEntities))
+            return false
+        let monsterBattleScore = getMonsterBattleScore(entity, c)
+        let myBattleScore = getMyBattleScore(monsters, c)
+        if (monsterBattleScore < myBattleScore / 3)
+            return false
+        if (monsterBattleScore > myBattleScore)
+            return false
+        let mpRequired = getMpRequiredToDefeatMonster(entity)
+        if (c.mp < mpRequired)
+            return false
+        monsters = monsters.filter((e) => e.ai && e.id != entity.id)
+        for (let monster of monsters) {
+            if (distance(monster, entity) < 1) {
+                return false
+            }
+        }
+        return true
+    }
+    
+
+    let gridWidth = 16
+    let gridHeight = 16
+    let gridArrWidth = gridWidth * 4
+    let gridArrHeight = gridHeight * 4
+    let scaryMonsterRadius = 4.5
+    let terrainThickness = 0.4
+    let entityThickness = 0.4
+
+    let optimalMonsterRange = 1
+    let optimalMonsterRangeBuffer = 0
+
+    function sqr(x) {
+        return x * x
+    }
+    function dist2(v, w) {
+        return sqr(v.x - w.x) + sqr(v.y - w.y)
+    }
+    function distToSegmentSquared(p, v, w) {
+        let l2 = dist2(v, w)
+        if (l2 == 0)
+            return dist2(p, v)
+        let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2
+        t = Math.max(0, Math.min(1, t))
+        return dist2(p, {
+            x: v.x + t * (w.x - v.x),
+            y: v.y + t * (w.y - v.y)
+        })
+    }
+    function distToSegment(p, v, w) {
+        return Math.sqrt(distToSegmentSquared(p, v, w))
+    }
+    function hasLineOfSight(target, from, nonTraversableEntities = []) {
+        if (!target)
+            return false
+        
+        for (let e of nonTraversableEntities) {
+            if ("id" in e && "id" in target && e.id === target.id)
+                continue
+            let thickCheck = terrainThickness
+            if (e.id)
+                thickCheck = entityThickness
+            if (distance(e, from) < thickCheck) {
+                let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
+                let vecToEntity = { x: e.x - from.x, y: e.y - from.y }
+                let vecToSpot = { x: target.x - from.x, y: target.y - from.y }
+                let sameDir = dot([vecToEntity.x, vecToEntity.y], [vecToSpot.x, vecToSpot.y]) < 0
+                if (sameDir)
+                    continue
+            }
+            if (distToSegment(e, from, target) < thickCheck) {
+                return false
+            }
+        }
+        return true
+    }
+
+    let targetId = 0
+    function hasLineOfSafety(target, from, monsters, c, dangerousEnemyPredicate = e => e.hostile && e.id != targetId) {
+        if (!target)
+            return false
+        let hostlies = monsters.filter(dangerousEnemyPredicate)
+        for (let monster of hostlies) {
+            if (targetId == monster.id)
+                continue
+            if (distance(monster, c) <= scaryMonsterRadius) {
+                let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
+                let vecToMonster = { x: monster.x - from.x, y: monster.y - from.y }
+                let vecToSpot = { x: target.x - from.x, y: target.y - from.y }
+                let sameDir = dot([vecToMonster.x, vecToMonster.y], [vecToSpot.x, vecToSpot.y]) < 0
+                if (sameDir)
+                    continue
+            }
+            let monsterTest = { x: monster.x, y: monster.y }
+            let distToTarget = distToSegment(monster, from, target)
+            if (distToTarget < scaryMonsterRadius) {
+                return false
+            }
+        }
+        return true
+    }
+    function getSpotInfo(x, y, monsters, nonTraversableEntities, c) {
+        let nearMonsters = monsters.filter((m) => distance({ x, y }, m))
+        let target = monsters.filter((entity) => entity.id === targetId).shift()
+        let spotValue = 50
+        let spotType = "open"
+        if (!hasLineOfSight({ x, y }, c, nonTraversableEntities)) {
+            spotValue = 555
+            spotType = "obstructed"
+        }
+        if (!hasLineOfSafety({ x, y }, c, monsters, c)) {
+            spotValue = 555
+            spotType = "dangerous"
+        }
+        if (spotType != "obstructed" && spotType != "dangerous") {
+            for (let monster of nearMonsters) {
+                let monsterTest = { x: monster.x, y: monster.y }
+                let dist = Math.max(distance({ x, y }, monster))
+                if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && isValidTarget(monster, nonTraversableEntities, c, monsters)) {
+                    let delta = 0
+                    if (dist < optimalMonsterRange - 0.25 + optimalMonsterRangeBuffer && optimalMonsterRange + optimalMonsterRangeBuffer > optimalMonsterRange - 0.25) {
+                        delta += 80 * (1 - dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
+                        if (spotType == "open") {
+                            spotType = "fallback"
+                        }
+                    } else if (dist < optimalMonsterRange + optimalMonsterRangeBuffer) {
+                        delta -= 40
+                        if (spotType == "open") {
+                            spotType = "preference"
+                        }
+                    } else if (dist < optimalMonsterRange + optimalMonsterRangeBuffer + 0.5) {
+                        delta += 50
+                        if (spotType == "open") {
+                            spotType = "fallback"
+                        }
+                    }
+                    if (!hasLineOfSight({ x, y }, monsterTest, nonTraversableEntities)) {
+                        delta += 100
+                        spotType = "partially-obstructed"
+                    }
+                    spotValue += delta
+                } else {
+                    let targetGooOtherGooCombat = target && target.md.toLowerCase().includes("goo") && monster.md.toLowerCase().includes("goo") && dw.c.combat
+                    let doAvoid = monster.hostile || targetGooOtherGooCombat
+                    let prevScaryRadius = scaryMonsterRadius
+                    if (targetGooOtherGooCombat && !monster.hostile) {
+                        scaryMonsterRadius = 3
+                    }
+                    if (!hasLineOfSafety({x:x, y:y}, c, monsters, c, e => e.id == monster.id) && doAvoid && hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities)) {
+                        spotValue += 500
+                        spotType = "dangerous"
+                    }
+                    scaryMonsterRadius = prevScaryRadius
+                }
+            }
+        }
+        return { positionValue: spotValue, type: spotType, lastUpdate: new Date() }
+    }
+        
+    function distance(a, b)
+    {
+        var distance = Math.sqrt((Math.pow(a.x-b.x,2))+(Math.pow(a.y-b.y,2)))
+        return distance;
+    };
+
+    let visionGrid = new Array(gridArrWidth)
+    let gridLeft = 0 - gridWidth / 2
+    let gridTop = 0 - gridHeight / 2
+    let squareWidth = gridWidth / gridArrWidth
+    let squareHeight = gridHeight / gridArrHeight
+    squareWidth = gridWidth / gridArrWidth
+    squareHeight = gridHeight / gridArrHeight
+    for (let i = 0; i < visionGrid.length; ++i) {
+        visionGrid[i] = new Array(gridArrHeight)
+        for (let j = 0; j < visionGrid[i].length; ++j) {
+            let x = gridLeft + i * squareWidth - squareWidth / 2
+            let y = gridTop + j * squareHeight - squareHeight / 2
+            visionGrid[i][j] = { x, y, threat: 555, type: "dangerous", lastUpdate: new Date() }
+        }
+    }
+
+    self.addEventListener('message', function(e) {
+        // Add the functions and variables needed here like yieldVisionGridUpdatesOnOldSpots
+        // and Stopwatch definition...
+        gridLeft = e.data.c.x - gridWidth / 2
+        gridTop = e.data.c.y - gridHeight / 2
+        
+        targetId = e.data.targetId
+
+        function* yieldVisionGridUpdatesOnOldSpots() {
+            while (true) {
+                let visionGridEx = []
+                for (let i = 0; i < gridArrWidth; ++i) {
+                    for (let j = 0; j < gridArrHeight; ++j) {
+                        let distPlayer = distance(visionGrid[i][j], e.data.c)
+                        let distUse = distPlayer
+                        distUse /= 16
+                        distUse += visionGrid[i][j].threat / 555
+                        visionGridEx.push({ i, j, data: visionGrid[i][j], dist: distUse })
+                    }
+                }
+                let now = new Date()
+                visionGridEx.sort((a, b) => (now.getTime() - b.data.lastUpdate.getTime()) / b.dist - (now.getTime() - a.data.lastUpdate.getTime()) / a.dist)
+                for (let spot of visionGridEx) {
+                    now = new Date()
+                    let gridLeft2 = e.data.c.x - gridWidth / 2
+                    let gridTop2 = e.data.c.y - gridHeight / 2
+                    let squareWidth2 = gridWidth / gridArrWidth
+                    let squareHeight2 = gridHeight / gridArrHeight
+                    squareWidth2 = gridWidth / gridArrWidth
+                    squareHeight2 = gridHeight / gridArrHeight
+                    let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
+                    let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
+                    let spotInfo = getSpotInfo(x, y, e.data.monsters, e.data.nonTraversableEntities, e.data.c)
+                    visionGrid[spot.i][spot.j] = { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() }
+                    yield { i: spot.i, j: spot.j, data: { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
+                }
+                fullGridProcessed = true
+            }
+        }
+
+
+        let sw = new Stopwatch();
+        sw.Start();
+        let visionGridUpdateYielderOld = yieldVisionGridUpdatesOnOldSpots(0, 100);
+        let fullGridProcessed = false;
+        let updates = [];
+        while (sw.ElapsedMilliseconds < e.data.gridUpdatePeriod && !fullGridProcessed) {
+            let visionGridUpdate = visionGridUpdateYielderOld.next().value;
+            let gridLeft2 = e.data.c.x - e.data.gridWidth / 2;
+            let gridTop2 = e.data.c.y - e.data.gridHeight / 2;
+            let squareWidth2 = e.data.gridWidth / e.data.gridArrWidth;
+            let squareHeight2 = e.data.gridHeight / e.data.gridArrHeight;
+            let x = gridLeft2 + visionGridUpdate.i * squareWidth2 - squareWidth2 / 2;
+            let y = gridTop2 + visionGridUpdate.j * squareHeight2 - squareHeight2 / 2;
+            updates.push({ i: visionGridUpdate.i, j: visionGridUpdate.j, x, y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() });
+        }
+        self.postMessage(updates);
+    }, false);
+`;
+
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const visionGridWorker = new Worker(URL.createObjectURL(blob));
+
+async function updateVisionGridOld() {
+    visionGridWorker.postMessage({
+        gridUpdatePeriod: gridUpdatePeriod,
+        monsters: dw.findEntities((e) => e.ai),
+        nonTraversableEntities: getNonTraversableEntities(),
+        c: {x:dw.c.x, y:dw.c.y, skills:dw.c.skills},
+        gridWidth: gridWidth,
+        gridHeight: gridHeight,
+        gridArrWidth: gridArrWidth,
+        gridArrHeight: gridArrHeight,
+        targetId: dw.targetId
+    });
+
+    let sleepTime = Math.max(1, gridUpdatePeriod - (new Stopwatch()).ElapsedMilliseconds);
+    sleepTime = Math.max(33 - (new Stopwatch()).ElapsedMilliseconds, sleepTime);
+    await sleep(sleepTime);
+    setTimeout(updateVisionGridOld, 1);
 }
-setTimeout(updateVisionGridOld, 100)
+
+visionGridWorker.addEventListener('message', function(e) {
+  e.data.forEach(update => {
+    visionGrid[update.i][update.j] = { x: update.x, y: update.y, threat: update.threat, type: update.type, lastUpdate: update.lastUpdate };
+  });
+}, false);
+
+setTimeout(updateVisionGridOld, 100);
 
 
 let floatingText = []
