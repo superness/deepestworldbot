@@ -3,7 +3,7 @@ dw.set("showComputerVision", showComputerVision)
 let optimalMonsterRange = dw.c.skills.filter((s) => s).shift().range
 let optimalMonsterRangeBuffer = 0
 let gridUpdatePeriod = 33
-let gridWidth = 16
+let gridWidth = 24
 let gridHeight = 16
 let gridArrWidth = gridWidth * 4
 let gridArrHeight = gridHeight * 4
@@ -302,7 +302,7 @@ const workerCode = `
     }
     
 
-    let gridWidth = 16
+    let gridWidth = 24
     let gridHeight = 16
     let gridArrWidth = gridWidth * 4
     let gridArrHeight = gridHeight * 4
