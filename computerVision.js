@@ -390,7 +390,7 @@ function getBestSkill(targetDistance) {
 function getSkillDamage(skill) {
     if (!skill)
         return 0
-    let skillDmg = skill.acidDmg + skill.coldDmg + skill.fireDmg + skill.elecDmg + skill.physDmg
+    let skillDmg = skill.acid + skill.cold + skill.fire + skill.elec + skill.phys
     return skillDmg ?? 0
 }
 
