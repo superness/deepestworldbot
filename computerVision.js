@@ -413,7 +413,7 @@ const workerCode = `
                     }
                     spotValue += delta
                 } else {
-                    let targetGooOtherGooCombat = target && target.md.toLowerCase().includes("goo") && monster.md.toLowerCase().includes("goo") && dw.c.combat
+                    let targetGooOtherGooCombat = target && target.md.toLowerCase().includes("goo") && monster.md.toLowerCase().includes("goo") && c.combat
                     let doAvoid = monster.hostile || targetGooOtherGooCombat
                     let prevScaryRadius = scaryMonsterRadius
                     if (targetGooOtherGooCombat && !monster.hostile) {
@@ -673,8 +673,12 @@ function getBestSkill(targetDistance) {
     return bestSkill
 }
 
+let healingRuneParts = ['heal', 'shield']
+
 function getSkillDamage(skill) {
     if (!skill)
+        return 0
+    if(healingRuneParts.filter(p => skill.md.toLowerCase().includes(p)).length > 0)
         return 0
     let skillDmg = skill.acid + skill.cold + skill.fire + skill.elec + skill.phys
     return skillDmg ?? 0
