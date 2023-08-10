@@ -2,7 +2,7 @@ let showComputerVision = dw.get("showComputerVision") ?? true
 dw.set("showComputerVision", showComputerVision)
 let optimalMonsterRange = dw.c.skills.filter((s) => s).shift().range
 let optimalMonsterRangeBuffer = 0
-let gridUpdatePeriod = 100
+let gridUpdatePeriod = 7
 let gridWidth = 16
 let gridHeight = 16
 let gridArrWidth = gridWidth * 2
@@ -252,7 +252,9 @@ async function updateVisionGridOld() {
         visionGrid[visionGridUpdate.i][visionGridUpdate.j] = { x, y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() }
     }
     
-    await sleep(Math.max(1, gridUpdatePeriod - sw.ElapsedMilliseconds))
+    let sleepTime = Math.max(1, gridUpdatePeriod - sw.ElapsedMilliseconds)
+    sleepTime = Math.max(100 - sw.ElapsedMilliseconds, sleepTime)
+    await sleep(sleepTime)
     updateVisionGridOld()
 }
 setTimeout(updateVisionGridOld, 100)
