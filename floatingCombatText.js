@@ -1,3 +1,5 @@
+// See an example: https://github.com/superness/deepestworldbot/blob/main/combattext.gif
+
 let floatingText = []
 
 dw.on('hit', data => {
