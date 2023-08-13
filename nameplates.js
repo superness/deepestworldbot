@@ -1,3 +1,4 @@
+// See an example: https://github.com/superness/deepestworldbot/blob/main/nameplates.PNG
 
 dw.on("drawEnd", (ctx, cx, cy) => {
     ctx.strokeStyle = "green"
