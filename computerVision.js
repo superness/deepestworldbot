@@ -114,13 +114,15 @@ function getNonTraversableEntities() {
     }
     let chunkPropertyKeys = Object.keys(dw.chunks).filter((k) => k.startsWith(dw.c.l))
     for (let k of chunkPropertyKeys) {
+        let l = k.split(".")[0] - 1
         let r = k.split(".")[2]
         let c = k.split(".")[1]
+        let oneBelow = `${l}.${c}.${r}`
         for (let i = 0; i < 16; ++i) {
             for (let j = 0; j < 16; ++j) {
-                if (dw.chunks[k][0][i][j] != 0) {
+                if (dw.chunks[k][0][i][j] != 0 || dw.chunks[oneBelow][0][i][j] == 0) {
                     let x = r * 16 + j
-                    let y = c * 16 + i
+                    let y = c * 16 + i - 1
                     if (x < dw.c.x - gridWidth / 2 || x > dw.c.x + gridWidth / 2 || y < dw.c.y - gridHeight / 2 || y > dw.c.y + gridHeight / 2) {
                         continue
                     }
