@@ -949,11 +949,6 @@ setInterval(function () {
     }
 
     let monsterTargettingMe = dw.findClosestMonster((e) => e.targetId == dw.c.id)
-    if(!dw.c.comabt && !monsterTargettingMe)
-    {
-        return
-    }
-
     let target = dw.findClosestMonster((m) => isValidTarget(m))
     if ((!target || target.hp == target.hpMax) && monsterTargettingMe && target != monsterTargettingMe) {
         target = monsterTargettingMe
