@@ -119,10 +119,10 @@ function getNonTraversableEntities() {
         let c = k.split(".")[1]
         let oneBelow = `${l}.${c}.${r}`
         for (let i = 0; i < 16; ++i) {
-            for (let j = 0; j < 16; ++j) {
-                if (dw.chunks[k][0][i][j] != 0 || dw.chunks[oneBelow][0][i][j] == 0) {
+            for (let j = 0; j < 16; ++j) {let isHole = dw.chunks[oneBelow] && dw.chunks[oneBelow][0][i][j] == 0
+                if (dw.chunks[k][0][i][j] != 0 || isHole) {
                     let x = r * 16 + j
-                    let y = c * 16 + i - (dw.chunks[oneBelow][0][i][j] == 0 ? 1 : 0)
+                    let y = c * 16 + i - (isHole ? 1 : 0)
                     if (x < dw.c.x - gridWidth / 2 || x > dw.c.x + gridWidth / 2 || y < dw.c.y - gridHeight / 2 || y > dw.c.y + gridHeight / 2) {
                         continue
                     }
