@@ -122,7 +122,7 @@ function getNonTraversableEntities() {
             for (let j = 0; j < 16; ++j) {
                 if (dw.chunks[k][0][i][j] != 0 || dw.chunks[oneBelow][0][i][j] == 0) {
                     let x = r * 16 + j
-                    let y = c * 16 + i - 1
+                    let y = c * 16 + i - (dw.chunks[oneBelow][0][i][j] == 0 ? 1 : 0)
                     if (x < dw.c.x - gridWidth / 2 || x > dw.c.x + gridWidth / 2 || y < dw.c.y - gridHeight / 2 || y > dw.c.y + gridHeight / 2) {
                         continue
                     }
