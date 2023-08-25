@@ -420,7 +420,7 @@ const workerCode = `
         }
         return true
     }
-    function getSpotInfo(x, y, monsters, nonTraversableEntities, c, optimalMonsterRange, optimalMonsterRangeBuffer, targetZoneLevel) {
+    function getSpotInfo(x, y, monsters, nonTraversableEntities, c, optimalMonsterRange, optimalMonsterRangeBuffer, targetZoneLevel, targetId) {
         let nearMonsters = monsters.filter((m) => distance({ x, y }, m))
         let target = monsters.filter((entity) => entity.id === targetId).shift()
         let spotValue = 50
@@ -533,7 +533,7 @@ const workerCode = `
                     squareHeight2 = gridHeight / gridArrHeight
                     let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
                     let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
-                    let spotInfo = getSpotInfo(x, y, e.data.monsters, e.data.nonTraversableEntities, e.data.c, e.data.optimalMonsterRange, e.data.optimalMonsterRangeBuffer, e.data.targetZoneLevel)
+                    let spotInfo = getSpotInfo(x, y, e.data.monsters, e.data.nonTraversableEntities, e.data.c, e.data.optimalMonsterRange, e.data.optimalMonsterRangeBuffer, e.data.targetZoneLevel, targetId)
                     visionGrid[spot.i][spot.j] = { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() }
                     yield { i: spot.i, j: spot.j, data: { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
                 }
@@ -569,7 +569,7 @@ async function updateVisionGridOld() {
         gridUpdatePeriod: gridUpdatePeriod,
         monsters: dw.findEntities((e) => e.ai),
         nonTraversableEntities: getNonTraversableEntities(),
-        c: {x:dw.c.x, y:dw.c.y, skills:dw.c.skills, hp:dw.c.hp, hpMax:dw.c.hpMax, mp:dw.c.mp, mpRegen:dw.c.mpRegen},
+        c: {x:dw.c.x, y:dw.c.y, skills:dw.c.skills, hp:dw.c.hp, hpMax:dw.c.hpMax, mp:dw.c.mp, mpRegen:dw.c.mpRegen, combat:dw.c.combat},
         gridWidth: gridWidth,
         gridHeight: gridHeight,
         gridArrWidth: gridArrWidth,
@@ -1404,4 +1404,3 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
         ctx.fill()
     }
 }
-
