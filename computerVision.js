@@ -705,7 +705,7 @@ function isValidTarget(entity, nonTraversableEntities = null) {
 // Skill and damage calcuation
 function getBestSkill(targetDistance) {
 
-    let sortedSkills = dw.c.skills.filter(s => s.range >= targetDistance).sort((a,b) => getSkillDamage(a) - getSkillDamage(b))
+    let sortedSkills = dw.c.skills.filter(s => s.range >= targetDistance).sort((a,b) => getSkillDamage(b) - getSkillDamage(a))
 
     if(sortedSkills.length == 0) return null
 
