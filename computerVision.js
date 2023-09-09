@@ -178,22 +178,16 @@ const workerCode = `
 
     // Skill and damage calcuation
     function getBestSkill(targetDistance, c) {
-        let bestSkill = null
-        let mostDamage = 0
-        for (let skill of c.skills) {
-            if (skill.range < targetDistance) {
-                continue
-            }
-            let skillDamage = getSkillDamage(skill)
-            if (mostDamage < skillDamage) {
-                mostDamage = skillDamage
-                bestSkill = skill
-            }
-        }
+        let sortedSkills = c.skills.filter(s => getSkillDamage(s) > 0).filter(s => s.range >= targetDistance).sort((a,b) => getSkillDamage(b) - getSkillDamage(a))
+    
+        if(sortedSkills.length == 0) return null
+    
+        let bestSkill = sortedSkills[0]
+        bestSkill.skillBagIndex = c.skills.findIndex(s => s == bestSkill)
         return bestSkill
     }
     
-    let healingRuneParts = ['heal', 'lifeshield']
+    let healingRuneParts = ['heal', 'lifeshield', 'blink']
     
     function getSkillDamage(skill) {
         if (!skill)
@@ -704,8 +698,7 @@ function isValidTarget(entity, nonTraversableEntities = null) {
 
 // Skill and damage calcuation
 function getBestSkill(targetDistance) {
-
-    let sortedSkills = dw.c.skills.filter(s => s.range >= targetDistance).sort((a,b) => getSkillDamage(b) - getSkillDamage(a))
+    let sortedSkills = dw.c.skills.filter(s => getSkillDamage(s) > 0).filter(s => s.range >= targetDistance).sort((a,b) => getSkillDamage(b) - getSkillDamage(a))
 
     if(sortedSkills.length == 0) return null
 
@@ -714,7 +707,7 @@ function getBestSkill(targetDistance) {
     return bestSkill
 }
 
-let healingRuneParts = ['heal', 'lifeshield']
+let healingRuneParts = ['heal', 'lifeshield', 'blink']
 
 function getSkillDamage(skill) {
     if (!skill)
