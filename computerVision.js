@@ -104,7 +104,7 @@ function getNonTraversableEntities() {
         let oneBelow = `${l}.${c}.${r}`
         for (let i = 0; i < 16; ++i) {
             for (let j = 0; j < 16; ++j) {
-                let isHole = dw.chunks[oneBelow] && dw.chunks[oneBelow][0][i][j] == 0
+                let isHole = dw.chunks[oneBelow] && dw.chunks[oneBelow][0][i][j] < 1
                 if (dw.chunks[k][0][i][j] != 0 || isHole) {
                     let x = r * 16 + j
                     let y = c * 16 + i - (isHole ? 1 : 0)
