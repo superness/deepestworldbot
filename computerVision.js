@@ -40,9 +40,8 @@ function distToSegment(p, v, w) {
 function hasLineOfSight(target, from = dw.character, nonTraversableEntities = []) {
     if (!target)
         return false
-    if (dw.getTerrainAt({ l: dw.c.l, x: target.x, y: target.y }) > 0) {
+    if (dw.getTerrain(target.x, target.y, dw.c.l) > 0)
         return false
-    }
     for (let e of nonTraversableEntities) {
         if ("id" in e && "id" in target && e.id === target.id)
             continue
