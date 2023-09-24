@@ -107,7 +107,7 @@ function getNonTraversableEntities() {
                 let isHole = dw.chunks[oneBelow] && dw.chunks[oneBelow][0][i][j] < 1
                 if (dw.chunks[k][0][i][j] != 0 || isHole) {
                     let x = r * 16 + j
-                    let y = c * 16 + i - (isHole ? 1 : 0)
+                    let y = c * 16 + i
                     if (x < dw.c.x - gridWidth / 2 || x > dw.c.x + gridWidth / 2 || y < dw.c.y - gridHeight / 2 || y > dw.c.y + gridHeight / 2) {
                         continue
                     }
@@ -817,7 +817,13 @@ setInterval(function () {
 
     let canSeeSpot = hasLineOfSight(moveToSpot, dw.c, getNonTraversableEntities())
     if (!bestSpot && (moveToSpotIsClose || !isSpotSafe || !canSeeSpot)) {
-        let goodSpots = getGoodSpots(50, true)
+        let goodSpots = getGoodSpots(50, true, true)
+
+        // Clear the recent spot list if we are trapped under them
+        if(goodSpots.length == 0) {
+            console.log('resetting recent spots')
+            recentSpots = []
+        }
         let goodSpotsNoAvoidRecent = getGoodSpots(50, false)
         let goodFartherSpots = goodSpots.filter((p) => dw.distance(p, dw.c) > searchOffset)
         let goodFarSpots = goodSpots.filter((p) => dw.distance(p, dw.c) > searchOffsetMission)
@@ -871,7 +877,7 @@ function getSpotRecentlyUsed(x, y) {
     }
     return false
 }
-function getGoodSpots(range, avoidRecent = false) {
+function getGoodSpots(range, avoidRecent = false, reverseSort = false) {
     let goodSpots = []
     let now = new Date()
     for (let i = 0; i < gridArrWidth; ++i) {
@@ -886,7 +892,7 @@ function getGoodSpots(range, avoidRecent = false) {
     goodSpots.sort(function (a, b) {
         let da = dw.distance(dw.c, a)
         let db = dw.distance(dw.c, b)
-        return da - db
+        return reverseSort ? db - da : da - db
     })
     return goodSpots
 }
