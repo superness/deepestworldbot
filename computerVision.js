@@ -736,29 +736,6 @@ function getMonstersTargettingMeBattleScore() {
     return monstersTargettingMeBattleScore
 }
 
-function getMyLowestArmor() {
-    return Math.min(dw.c.physArmor, dw.c.acidArmor, dw.c.fireArmor, dw.c.elecArmor, dw.c.coldArmor)
-}
-
-function getMyGearScore(useMaxHp = false) {
-    let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp) + ((dw.c.skills[0].fx.mpToHpCost == 1) ? (useMaxHp ? dw.c.mpMax : dw.c.mp) : 0)
-
-    let dmgContribution = Math.pow((ComputerVision.getSkillDamage(dw.c.skills[0]) + dw.c.hpRegen + dw.c.mpRegen) / 10, 1.5) + (getMyLowestArmor() / 10)
-    let potentialScore = dmgContribution * hpScorePart
-    let maxTargetLife = ComputerVision.getMaxDamageDealtBeforeOom(dw.e, dw.c, getBiome(dw.c.x, dw.c.y, dw.c.z))
-    let maxDmgScore = maxTargetLife * dmgContribution
-    let dmgScorePart = Math.min(maxDmgScore, potentialScore)
-    let battleScore = Math.sqrt(dmgScorePart)
-
-    if(isNaN(battleScore)) battleScore = 0
-
-    let bestSkill = dw.c.skills[0]
-    return battleScore * (bestSkill?.fx.bomb ? 0.6 : 1)
-                       * ((bestSkill?.range < 3 || bestSkill?.fx.blink) ? 0.75 : 1)
-                       * ((getBiome(dw.c.x, dw.c.y, dw.c.l) == 1) ? 1 : 0.8)
-                    // * (dw.c.party.length > 0 ? 1 : 1)
-                       * ComputerVision.getMyDmgMultiplier()
-}
 
 // Pick where to move
 let moveUpdatePeriod = 30
@@ -1050,7 +1027,6 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
     let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
     let myBattleScore = Math.round(ComputerVision.getMyBattleScore(dw.e, dw.c, getBiome(dw.c.x, dw.c.y, dw.c.z), true))
-    let myGearScore = Math.round(getMyGearScore(true))
     let nonTraversableEntities = getNonTraversableEntities()
     for (let monster of monsters) {
 
@@ -1219,8 +1195,8 @@ dw.on("drawEnd", (ctx, cx, cy) => {
     myBattleScore = Math.round(ComputerVision.getMyBattleScore(dw.e, dw.c, getBiome(dw.c.x, dw.c.y, dw.c.z), true))
     ctx.textAlign = "left"
     textWidth = ctx.measureText("x").width + 8
-    ctx.strokeText(`${myBattleScore} | ${myGearScore}`, x + textWidth, y - 8 - 30)
-    ctx.fillText(`${myBattleScore} | ${myGearScore}`, x + textWidth, y - 8 - 30)
+    ctx.strokeText(`${myBattleScore}`, x + textWidth, y - 8 - 30)
+    ctx.fillText(`${myBattleScore}`, x + textWidth, y - 8 - 30)
     ctx.font = "24px arial"
     ctx.textAlign = "center"
     ctx.strokeText(name, x, y - 12)
