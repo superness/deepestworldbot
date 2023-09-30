@@ -72,9 +72,11 @@ class ComputerVision {
     static entityThickness = 0.51
 
     // Skill and damage calcuation
-    static getBestSkill(targetDistance, c) {        
+    static getBestSkill(targetDistance, c, target = null) {        
         let sortedSkills = c.skills.filter(s => ComputerVision.getSkillDamage(s) > 0).filter(s => s.range >= targetDistance).sort((a,b) => ComputerVision.getSkillDamage(b) - ComputerVision.getSkillDamage(a))
-    
+
+        sortedSkills = sortedSkills.filter(s => !(s.fx?.bomb && target?.fx[`${s.md}Bomb`]))
+
         if(sortedSkills.length == 0) return null
     
         let bestSkill = sortedSkills[0]
@@ -895,7 +897,7 @@ setInterval(function () {
     
     dw.setTarget(target.id)
     let distTarget = dw.distance(target, dw.c)
-    let skillUse = ComputerVision.getBestSkill(distTarget, dw.c)
+    let skillUse = ComputerVision.getBestSkill(distTarget, dw.c, target)
 
     // No good skills to use
     if (!skillUse || skillUse === undefined) {
