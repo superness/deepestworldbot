@@ -399,9 +399,9 @@ class ComputerVision {
                 } else {
                     let targetGooOtherGooCombat = target && target.md.toLowerCase().includes("goo") && monster.md.toLowerCase().includes("goo") && (c.combat == 1)
                     let doAvoid = monster.bad || targetGooOtherGooCombat
-                    let prevScaryRadius = ComputerVision.scaryMonsterRadius
+                    let prevScaryRadius = this.scaryMonsterRadius
                     if (targetGooOtherGooCombat && !monster.bad) {
-                        scaryMonsterRadius = 3
+                        this.scaryMonsterRadius = 3
                     }
                     if (!ComputerVision.hasLineOfSafety({x:x, y:y}, c, monsters, c, e => e.id == monster.id) && doAvoid && ComputerVision.hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities, 0)) {
                         spotValue += 500
