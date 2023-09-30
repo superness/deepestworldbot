@@ -316,7 +316,7 @@ class ComputerVision {
     static hasLineOfSafety(target, from, monsters, c, targetId, dangerousEnemyPredicate = e => e.bad && e.id != targetId) {
         if (!target)
             return false
-        let hostlies = monsters.filter(dangerousEnemyPredicate).filter(m => target.id != m)
+        let hostlies = monsters.filter(dangerousEnemyPredicate).filter(m => m.id != targetId)
         let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
         for (let monster of hostlies) {
             if (this.targetId == monster.id)
