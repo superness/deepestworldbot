@@ -509,7 +509,7 @@ function workerCodeFunc() {
 }
 
 const stopWatchCode = Stopwatch.toString()
-const workerCode = `${stopWatchCode};${ComputerVision.toString()};${workerCodeFunc.toString().replace('function workerCodeFunc()', '')}`
+const workerCode = `${stopWatchCode};${ComputerVision.toString()};${workerCodeFunc.toString()};workerCodeFunc()`
 
 const blob = new Blob([workerCode], { type: 'application/javascript' });
 const visionGridWorker = new Worker(URL.createObjectURL(blob));
@@ -1405,7 +1405,6 @@ addMenuContextMenuButton(cache.get(`showComputerVision`) ? 'VFX üêµ' : 'VFX üô
     }
     cache.set(`showComputerVision`, showComputerVision)
 })
-
 
 
 
