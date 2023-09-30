@@ -313,11 +313,10 @@ class ComputerVision {
         return true
     }
 
-    targetId = 0
-    static hasLineOfSafety(target, from, monsters, c, dangerousEnemyPredicate = e => e.bad && e.id != target?.id) {
+    static hasLineOfSafety(target, from, monsters, c, targetId, dangerousEnemyPredicate = e => e.bad && e.id != targetId) {
         if (!target)
             return false
-        let hostlies = monsters.filter(dangerousEnemyPredicate)
+        let hostlies = monsters.filter(dangerousEnemyPredicate).filter(m => target.id != m)
         let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n)
         for (let monster of hostlies) {
             if (this.targetId == monster.id)
@@ -364,7 +363,7 @@ class ComputerVision {
             spotValue = 555
             spotType = "obstructed"
         }
-        if (!ComputerVision.hasLineOfSafety({ x, y }, c, monsters, c)) {
+        if (!ComputerVision.hasLineOfSafety({ x, y }, c, monsters, c, targetId)) {
             spotValue = 555
             spotType = "dangerous"
         }
@@ -403,7 +402,7 @@ class ComputerVision {
                     if (targetGooOtherGooCombat && !monster.bad) {
                         this.scaryMonsterRadius = 3
                     }
-                    if (!ComputerVision.hasLineOfSafety({x:x, y:y}, c, monsters, c, e => e.id == monster.id) && doAvoid && ComputerVision.hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities, 0)) {
+                    if (!ComputerVision.hasLineOfSafety({x:x, y:y}, c, monsters, c, targetId, e => e.id == monster.id) && doAvoid && ComputerVision.hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities, 0)) {
                         spotValue += 500
                         spotType = "dangerous"
                     }
@@ -752,12 +751,12 @@ setInterval(function () {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     let moveToSpotIsClose = dw.distance(moveToSpot, dw.c) < 0.35 
 
-    let isSpotSafe = ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c)
+    let isSpotSafe = ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c, dw.targetId)
     let targetIsGoo = target && target.md.toLowerCase().includes("goo") && dw.c.combat
 
     if(targetIsGoo)
     {
-        isSpotSafe = isSpotSafe && ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c, e => e.md.toLowerCase().includes("goo") && e.id != dw.targetId)
+        isSpotSafe = isSpotSafe && ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c, dw.targetId, e => e.md.toLowerCase().includes("goo") && e.id != dw.targetId)
     }
 
     let canSeeSpot = ComputerVision.hasLineOfSight(moveToSpot, dw.c, getNonTraversableEntities())
