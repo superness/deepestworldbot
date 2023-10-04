@@ -507,8 +507,8 @@ function workerCodeFunc() {
     false);
 }
 
-const stopWatchCode = Stopwatch.toString()
-const workerCode = `${stopWatchCode};${ComputerVision.toString()};${workerCodeFunc.toString()};workerCodeFunc()`
+const stopWatchCode = `var Stopwatch = ${Stopwatch.toString()}`
+const workerCode = `${stopWatchCode};var ComputerVision = ${ComputerVision.toString()};${workerCodeFunc.toString()};workerCodeFunc()`
 
 const blob = new Blob([workerCode], { type: 'application/javascript' });
 const visionGridWorker = new Worker(URL.createObjectURL(blob));
