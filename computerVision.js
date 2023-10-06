@@ -233,7 +233,7 @@ class ComputerVision {
     }    
 
     static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius ) {
-        if (entity.targetId == c.id) {
+        if (c.targetId == entity.id) {
             // try to 'un-target' a monster that walked near another monster since we targetted it
             if(c.combat) return true
             let otherMonsters = monsters.filter((e) => e.ai && e.id != entity.id)
@@ -929,6 +929,12 @@ setInterval(function () {
 // Attack stuff
 cache.set(`${dw.c.name}_skipAttacks`, cache.get(`${dw.c.name}_skipAttacks`) ?? false)
 setInterval(function () {
+    let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
+    if(!dw.c.combat && target && !ComputerVision.isValidTarget(target, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel)) {
+        dw.setTarget(0)
+        return
+    }
+    
     if (cache.get(`${dw.c.name}_skipAttacks`) == true)
     {
         return 
