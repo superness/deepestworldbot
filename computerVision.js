@@ -233,8 +233,17 @@ class ComputerVision {
     }    
 
     static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius ) {
-        if (entity.targetId == c.id)
+        if (entity.targetId == c.id) {
+            // try to 'un-target' a monster that walked near another monster since we targetted it
+            if(c.combat) return true
+            let otherMonsters = monsters.filter((e) => e.ai && e.id != entity.id)
+            for (let monster of otherMonsters) {
+                if (ComputerVision.distance(monster, entity) < nearMonsterUnsafeRadius) {
+                    return false
+                }
+            }
             return true
+        }
         if (!ComputerVision.hasLineOfSight(entity, c, nonTraversableEntities))
         {
             return false
