@@ -940,7 +940,7 @@ setInterval(function () {
         return 
     }
 
-    let target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel))
+    target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel))
 
     if (!target)
     {
