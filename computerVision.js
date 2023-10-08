@@ -55,11 +55,6 @@ class Stopwatch {
     }
 }
 
-
-function getBiome(x, y, z) {
-    return dw.getTerrain(x, y, z, -1)
-}
-
 async function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -118,7 +113,7 @@ function getNonTraversableEntities() {
 
 class ComputerVision {
 
-    static scaryMonsterRadius = 3.51
+    static scaryMonsterRadius = 4
     static terrainThickness = 0.51
     static entityThickness = 0.51
 
@@ -232,16 +227,11 @@ class ComputerVision {
         return monstersTargettingMeBattleScore
     }
 
-    static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius) {
-        if (c.targetId == entity.id) {
-            // try to 'un-target' a monster that walked near another monster since we targetted it
-            if (c.combat) return true
-            let otherMonsters = monsters.filter((e) => e.ai && e.id != entity.id)
-            for (let monster of otherMonsters) {
-                if (ComputerVision.distance(monster, entity) < nearMonsterUnsafeRadius) {
-                    return false
-                }
-            }
+    static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius, targetId) {
+
+        if (entity.targetId == c.id) return true
+
+        if (targetId == entity.id) {
             return true
         }
         if (!ComputerVision.hasLineOfSight(entity, c, nonTraversableEntities)) {
@@ -270,6 +260,7 @@ class ComputerVision {
         monsters = monsters.filter((e) => e.ai && e.id != entity.id)
         for (let monster of monsters) {
             if (ComputerVision.distance(monster, entity) < nearMonsterUnsafeRadius) {
+
                 return false
             }
         }
@@ -339,24 +330,9 @@ class ComputerVision {
                 if (sameDir)
                     continue
             }
+            let monsterTest = { x: monster.x, y: monster.y }
             let distToTarget = ComputerVision.distToSegment(monster, from, target)
             if (distToTarget < ComputerVision.scaryMonsterRadius) {
-                // monster direction vs spot to monster
-                if (monster.bad) {
-                    // // Uncomment this to allow walking behind hostile monsters when wandering
-                    // let vecDir = {x:monster.dx, y:monster.dy}
-                    // let vecPoint = {x:target.x - monster.x, y:target.y - monster.y}
-                    // let sameDir = dot([vecDir.x, vecDir.y], [vecPoint.x, vecPoint.y]) < 0
-                    // let vecPlayerMonster = {x:monster.x - from.x, y:monster.y - from.y}
-                    // let vecPlayerPoint = {x:target.x - from.x, y:target.y - from.y}
-                    // let sameDirPlayer = dot([vecPlayerMonster.x, vecPlayerMonster.y], [vecDir.x, vecDir.y]) < 0
-                    // let sameDirPlayerPoint = dot([vecPlayerPoint.x, vecPlayerPoint.y], [vecPoint.x, vecPoint.y]) < 0
-
-                    // if (sameDir && !sameDirPlayer && sameDirPlayerPoint)
-                    // {
-                    //     continue
-                    // }
-                }
                 return false
             }
         }
@@ -381,7 +357,7 @@ class ComputerVision {
                 let monsterTest = { x: monster.x, y: monster.y }
                 let dist = Math.max(ComputerVision.distance({ x, y }, monster))
 
-                if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && ComputerVision.isValidTarget(monster, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius)) {
+                if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && ComputerVision.isValidTarget(monster, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius, targetId)) {
                     let delta = 0
                     if (dist < optimalMonsterRange - 0.25 + optimalMonsterRangeBuffer && optimalMonsterRange + optimalMonsterRangeBuffer > optimalMonsterRange - 0.25) {
                         delta += 80 * (1 - dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
@@ -532,7 +508,7 @@ let scaryMonsterRadius = ComputerVision.scaryMonsterRadius
 let terrainThickness = ComputerVision.terrainThickness
 let entityThickness = ComputerVision.entityThickness
 let targetZoneLevel = dw.getZoneLevel()//dw.c.level
-let nearMonsterUnsafeRadius = 2.2
+let nearMonsterUnsafeRadius = 2.5
 
 let visionGrid = new Array(gridArrWidth)
 let gridLeft = dw.c.x - gridWidth / 2
@@ -668,7 +644,7 @@ setInterval(function () {
         return
     }
 
-    let mpRequired = ComputerVision.getMpRequiredToDefeatMonster(target, dw.c, getBiome(dw.c.x, dw.c.y, dw.c.z))
+    let mpRequired = ComputerVision.getMpRequiredToDefeatMonster(target, dw.c)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
     else if ((dw.c.hp < dw.c.hpMax * 0.8) && dw.c.combat != 1)
@@ -728,6 +704,7 @@ setInterval(function () {
         // Clear the recent spot list if we are trapped under them
         if (goodSpots.length == 0) {
             console.log('resetting recent spots')
+            //targetZoneLevel += 3
             recentSpots = []
         }
 
@@ -844,7 +821,6 @@ setInterval(function () {
         recentSpots.push({ x: dw.c.x - dx * 1 / 5, y: dw.c.y - dy * 1 / 5, r: recencyAvoidanceRadius })
     }
 
-    let connectToTargets = nonTraversableEntities
     let numUpdates = 0
     for (let i = recentSpots.length - 1; i >= 0; --i) {
         let currentSpot = recentSpots[i]
@@ -918,10 +894,24 @@ setInterval(function () {
 }, movePeriod)
 
 // Attack stuff
+function findClosestMonsterTo(target) {
+    let closestMonster = null
+    let closestDist = 9999999999999
+    for (let e of dw.findEntities(e => e.ai && e.id != target.id)) {
+        let distMonster = dw.distance(e, target)
+        if (distMonster < closestDist) {
+            closestDist = distMonster
+            closestMonster = e
+        }
+    }
+
+    return closestMonster
+}
+
 cache.set(`${dw.c.name}_skipAttacks`, cache.get(`${dw.c.name}_skipAttacks`) ?? false)
 setInterval(function () {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-    if (!dw.c.combat && target && !ComputerVision.isValidTarget(target, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel)) {
+    if (!dw.c.combat && target && !ComputerVision.isValidTarget(target, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, dw.targetId)) {
         dw.setTarget(0)
         return
     }
@@ -930,14 +920,22 @@ setInterval(function () {
         return
     }
 
-    target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel))
+    target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius))
 
     if (!target) {
         return
     }
 
-    dw.setTarget(target.id)
+    let closest = findClosestMonsterTo(target)
+    let distClosest = closest ? dw.distance(closest, target) : 99
+    if (!dw.c.combat && target) {
+        if (distClosest < nearMonsterUnsafeRadius) {
+            return
+        }
+    }
+
     let distTarget = dw.distance(target, dw.c)
+    dw.setTarget(target.id)
     let skillUse = ComputerVision.getBestSkill(distTarget, dw.c, target)
 
     // No good skills to use
@@ -959,7 +957,6 @@ setInterval(function () {
     }
 
     if (isSkillReady) {
-        console.log('using skill', skillUse.md, skillUse.skillBagIndex)
         dw.useSkill(skillUse.skillBagIndex, target.id)
     }
 }, 20)
@@ -1121,7 +1118,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         ctx.fillStyle = "white"
         if (battleScore < myBattleScore * 0.7) {
             ctx.fillStyle = "white"
-        } else if (ComputerVision.isValidTarget(monster, nonTraversableEntities, dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, getBiome(dw.c.x, dw.c.y, dw.c.z))) {
+        } else if (ComputerVision.isValidTarget(monster, nonTraversableEntities, dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, dw.targetId)) {
             ctx.strokeStyle = "orange"
         } else {
             ctx.strokeStyle = "red"
@@ -1439,22 +1436,6 @@ addMenuContextMenuButton(cache.get(`showComputerVision`) ? 'VFX ðŸµ' : 'VFX ðŸ™
     }
     cache.set(`showComputerVision`, showComputerVision)
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
