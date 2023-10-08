@@ -4,7 +4,7 @@ class LocalCache {
         this.cachedValues = {}
     }
     get(key) {
-        if(this.valueCache[key] == undefined) {
+        if (this.valueCache[key] == undefined) {
             console.log('adding to local cache', key, this.valueCache, this.valueCache[key], dw.get(key))
             this.valueCache[key] = dw.get(key) ?? null
         }
@@ -55,11 +55,6 @@ class Stopwatch {
     }
 }
 
-
-function getBiome(x, y, z){
-    return dw.getTerrain(x, y, z, -1)
-}
-
 async function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -72,10 +67,10 @@ function updateNonTraversableEntities() {
     for (let i = 0; i < count; ++i) {
         let e = blockingEntities[i]
         let hitbox = dw.md.items[e.md]?.hitbox ?? { w: 0, h: 0 }
-        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h, id: e.id, entity:1 })
-        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h / 2, id: e.id, entity:1 })
-        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h, id: e.id, entity:1 })
-        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h / 2, id: e.id, entity:1 })
+        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h, id: e.id, entity: 1 })
+        nonTraversableEntities.push({ x: e.x - hitbox.w / 2, y: e.y - hitbox.h / 2, id: e.id, entity: 1 })
+        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h, id: e.id, entity: 1 })
+        nonTraversableEntities.push({ x: e.x, y: e.y - hitbox.h / 2, id: e.id, entity: 1 })
     }
     let chunkPropertyKeys = Object.keys(dw.chunks).filter((k) => k.startsWith(dw.c.l))
     for (let k of chunkPropertyKeys) {
@@ -108,7 +103,7 @@ let lastNonTraversableEntitiesUpdate = new Date()
 function getNonTraversableEntities() {
     let now = new Date()
     let mssince = now.getTime() - lastNonTraversableEntitiesUpdate.getTime()
-    if(mssince > nonTraversableEntitiesUpdatePeriod) {
+    if (mssince > nonTraversableEntitiesUpdatePeriod) {
         updateNonTraversableEntities()
         lastNonTraversableEntitiesUpdate = now
     }
@@ -117,49 +112,49 @@ function getNonTraversableEntities() {
 
 
 class ComputerVision {
-    
-    static scaryMonsterRadius = 3.51
+
+    static scaryMonsterRadius = 4
     static terrainThickness = 0.51
     static entityThickness = 0.51
 
     // Skill and damage calcuation
     static getBestSkill(targetDistance, c, target = null) {
-        let sortedSkills = c.skills.filter(s => ComputerVision.getSkillDamage(s) > 0).filter(s => s.range >= targetDistance).sort((a,b) => ComputerVision.getSkillDamage(b) - ComputerVision.getSkillDamage(a))
-    
+        let sortedSkills = c.skills.filter(s => ComputerVision.getSkillDamage(s) > 0).filter(s => s.range >= targetDistance).sort((a, b) => ComputerVision.getSkillDamage(b) - ComputerVision.getSkillDamage(a))
+
         sortedSkills = sortedSkills.filter(s => !(s.fx?.bomb && (target?.fx[`${s.md}Bomb`] || (target?.hp < ComputerVision.getSkillDamage(s) * 2.5))))
 
-        if(sortedSkills.length == 0) return null
-    
+        if (sortedSkills.length == 0) return null
+
         let bestSkill = sortedSkills[0]
 
-        if(ComputerVision.getSkillDamage(bestSkill) == 0) return null
+        if (ComputerVision.getSkillDamage(bestSkill) == 0) return null
 
         bestSkill.skillBagIndex = c.skills.findIndex(s => s == bestSkill)
         return bestSkill
     }
-    
-    
+
+
     static getSkillDamage(skill) {
         let healingRuneParts = ['heal', 'lifeshield', 'blink']
         if (!skill)
             return 0
-        if(healingRuneParts.filter(p => skill.md.toLowerCase().includes(p)).length > 0)
+        if (healingRuneParts.filter(p => skill.md.toLowerCase().includes(p)).length > 0)
             return 0
         let skillDmg = (skill.acid + skill.cold + skill.fire + skill.elec + skill.phys) ?? 0
         let totalDmg = Math.floor(skillDmg * (1.0 - skill.crit) + (skill.crit * skill.critMult * skillDmg)) * (skill.fx.mpToHpCost == 1 ? 0.5 : 1)
         return totalDmg
-    }    
-    
-    static getMonsterBattleScore(monster, useFullHp = false) { 
+    }
+
+    static getMonsterBattleScore(monster, useFullHp = false) {
         let hpUse = useFullHp ? monster.hpMax : monster.hp
-        
+
         return Math.sqrt(hpUse * (ComputerVision.getMonsterDmg(monster)))
                                * (monster.md.includes('Def') ? 1.25 : 1)
     }
-    
+
     static getMonsterDmg(monster) {
 
-        if(monster.md.toLowerCase().includes('magicshrub')) {
+        if (monster.md.toLowerCase().includes('magicshrub')) {
             return 1
         }
 
@@ -169,7 +164,7 @@ class ComputerVision {
         }
         return Math.max(1, (dmg * (monster.md.includes('Pow') ? 1.25 : 1)))
     }
-    
+
     static getMonsterDmgReduction() {
         return 0.9
     }
@@ -178,20 +173,20 @@ class ComputerVision {
         let mySkillInfo = c.skills[0]
         return (ComputerVision.getSkillDamage(mySkillInfo) * ComputerVision.getMonsterDmgReduction())
     }
-    
-    static getMaxDamageDealtBeforeOom(c) {    
+
+    static getMaxDamageDealtBeforeOom(c) {
         let myBestSkill = c.skills[0]
         let mySkillInfo = myBestSkill
 
-        if(!mySkillInfo) return 1
-    
+        if (!mySkillInfo) return 1
+
         if (c.mpRegen > mySkillInfo.cost) return Number.MAX_SAFE_INTEGER
-    
-        if(c.mp < mySkillInfo.cost) return 0
-    
+
+        if (c.mp < mySkillInfo.cost) return 0
+
         let timeToOom = c.mp / (mySkillInfo.cost - c.mpRegen)
         let myDmg = ComputerVision.getMyDmg(c)
-    
+
         let maxPossibleDmg = timeToOom * myDmg
         return maxPossibleDmg
     }
@@ -199,7 +194,7 @@ class ComputerVision {
     static getMyDmgMultiplier() {
         return 1
     }
-    
+
     static getMyBattleScore(c, useMaxHp = false) {
         let hpScorePart = (useMaxHp ? c.hpMax : c.hp) + (c.skills[0].fx?.onHit?.some(e => e.md == "hpToMpDeathSelf") ? (useMaxHp ? c.mpMax : c.mp) : 0)
 
@@ -209,8 +204,8 @@ class ComputerVision {
         let dmgScorePart = Math.min(maxDmgScore, potentialScore)
         let battleScore = Math.sqrt(dmgScorePart)
 
-        if(isNaN(battleScore)) battleScore = 0
-    
+        if (isNaN(battleScore)) battleScore = 0
+
         battleScore *= ComputerVision.getMyDmgMultiplier()
 
         return battleScore
@@ -223,39 +218,31 @@ class ComputerVision {
 
     static getMonstersTargettingMeBattleScore(c, monsters) {
         let monstersTargettingMe = monsters.filter(e => e.targetId && e.targetId == c.id)
-        
+
         let monstersTargettingMeBattleScore = 0
-        if(monstersTargettingMe.length > 0) {
+        if (monstersTargettingMe.length > 0) {
             monstersTargettingMeBattleScore = monstersTargettingMe.map(e => ComputerVision.getMonsterBattleScore(e)).reduce((accumulator, currentValue) => accumulator + currentValue, monstersTargettingMeBattleScore)
         }
-    
-        return monstersTargettingMeBattleScore
-    }    
 
-    static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius ) {
-        if (c.targetId == entity.id) {
-            // try to 'un-target' a monster that walked near another monster since we targetted it
-            if(c.combat) return true
-            let otherMonsters = monsters.filter((e) => e.ai && e.id != entity.id)
-            for (let monster of otherMonsters) {
-                if (ComputerVision.distance(monster, entity) < nearMonsterUnsafeRadius) {
-                    return false
-                }
-            }
+        return monstersTargettingMeBattleScore
+    }
+
+    static isValidTarget(entity, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius, targetId) {
+
+        if (entity.targetId == c.id) return true
+
+        if (targetId == entity.id) {
             return true
         }
-        if (!ComputerVision.hasLineOfSight(entity, c, nonTraversableEntities))
-        {
+        if (!ComputerVision.hasLineOfSight(entity, c, nonTraversableEntities)) {
             return false
         }
 
-        if (entity.level < targetZoneLevel - 2 && entity.r === 0 && !entity.bad)
-        {
+        if (entity.level < targetZoneLevel - 2 && entity.r === 0 && !entity.bad) {
             return false
         }
-        
-        if(c.hp < (c.hpMax * 0.9) && !c.combat)
-        { 
+
+        if (c.hp < (c.hpMax * 0.9) && !c.combat) {
             return false
         }
 
@@ -263,18 +250,17 @@ class ComputerVision {
         let myBattleScore = ComputerVision.getMyBattleScore(c)
         let monstersTargettingMe = monsters.filter(e => e.targetId && e.targetId == c.id)
         let monstersTargettingMeBattleScore = ComputerVision.getMonstersTargettingMeBattleScore(c, monsters) * monstersTargettingMe.length
-        if ((monsterBattleScore + monstersTargettingMeBattleScore) > myBattleScore)
-        {
+        if ((monsterBattleScore + monstersTargettingMeBattleScore) > myBattleScore) {
             return false
         }
         let mpRequired = ComputerVision.getMpRequiredToDefeatMonster(entity, c)
-        if (c.mp < mpRequired)
-        {
+        if (c.mp < mpRequired) {
             return false
         }
         monsters = monsters.filter((e) => e.ai && e.id != entity.id)
         for (let monster of monsters) {
             if (ComputerVision.distance(monster, entity) < nearMonsterUnsafeRadius) {
+
                 return false
             }
         }
@@ -305,7 +291,7 @@ class ComputerVision {
     static hasLineOfSight(target, from, nonTraversableEntities = [], thickCheckOverride = null) {
         if (!target)
             return false
-        
+
         for (let e of nonTraversableEntities) {
             if ("id" in e && "id" in target && e.id === target.id)
                 continue
@@ -344,25 +330,9 @@ class ComputerVision {
                 if (sameDir)
                     continue
             }
+            let monsterTest = { x: monster.x, y: monster.y }
             let distToTarget = ComputerVision.distToSegment(monster, from, target)
             if (distToTarget < ComputerVision.scaryMonsterRadius) {
-                // monster direction vs spot to monster
-                if(monster.bad)
-                {
-                    // // Uncomment this to allow walking behind hostile monsters when wandering
-                    // let vecDir = {x:monster.dx, y:monster.dy}
-                    // let vecPoint = {x:target.x - monster.x, y:target.y - monster.y}
-                    // let sameDir = dot([vecDir.x, vecDir.y], [vecPoint.x, vecPoint.y]) < 0
-                    // let vecPlayerMonster = {x:monster.x - from.x, y:monster.y - from.y}
-                    // let vecPlayerPoint = {x:target.x - from.x, y:target.y - from.y}
-                    // let sameDirPlayer = dot([vecPlayerMonster.x, vecPlayerMonster.y], [vecDir.x, vecDir.y]) < 0
-                    // let sameDirPlayerPoint = dot([vecPlayerPoint.x, vecPlayerPoint.y], [vecPoint.x, vecPoint.y]) < 0
-
-                    // if (sameDir && !sameDirPlayer && sameDirPlayerPoint)
-                    // {
-                    //     continue
-                    // }
-                }
                 return false
             }
         }
@@ -386,8 +356,8 @@ class ComputerVision {
             for (let monster of nearMonsters) {
                 let monsterTest = { x: monster.x, y: monster.y }
                 let dist = Math.max(ComputerVision.distance({ x, y }, monster))
-                
-                if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && ComputerVision.isValidTarget(monster, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius)) {
+
+                if (dist < optimalMonsterRange + optimalMonsterRangeBuffer && ComputerVision.isValidTarget(monster, nonTraversableEntities, c, monsters, targetZoneLevel, nearMonsterUnsafeRadius, targetId)) {
                     let delta = 0
                     if (dist < optimalMonsterRange - 0.25 + optimalMonsterRangeBuffer && optimalMonsterRange + optimalMonsterRangeBuffer > optimalMonsterRange - 0.25) {
                         delta += 80 * (1 - dist / (optimalMonsterRange + optimalMonsterRangeBuffer))
@@ -417,7 +387,7 @@ class ComputerVision {
                     if (targetGooOtherGooCombat && !monster.bad) {
                         this.scaryMonsterRadius = 3
                     }
-                    if (!ComputerVision.hasLineOfSafety({x:x, y:y}, c, monsters, c, targetId, e => e.id == monster.id) && doAvoid && ComputerVision.hasLineOfSight({ x:x, y:y }, monster, nonTraversableEntities, 0)) {
+                    if (!ComputerVision.hasLineOfSafety({ x: x, y: y }, c, monsters, c, targetId, e => e.id == monster.id) && doAvoid && ComputerVision.hasLineOfSight({ x: x, y: y }, monster, nonTraversableEntities, 0)) {
                         spotValue += 500
                         spotType = "dangerous"
                     }
@@ -427,10 +397,9 @@ class ComputerVision {
         }
         return { positionValue: spotValue, type: spotType, lastUpdate: new Date() }
     }
-        
-    static distance(a, b)
-    {
-        var distance = Math.sqrt((Math.pow(a.x-b.x,2))+(Math.pow(a.y-b.y,2)))
+
+    static distance(a, b) {
+        var distance = Math.sqrt((Math.pow(a.x - b.x, 2)) + (Math.pow(a.y - b.y, 2)))
         return distance;
     };
 }
@@ -440,7 +409,7 @@ function workerCodeFunc() {
     let gridHeight = 14
     let gridArrWidth = gridWidth * 3
     let gridArrHeight = gridHeight * 3
-    
+
     let visionGrid = new Array(gridArrWidth)
     let gridLeft = 0 - gridWidth / 2
     let gridTop = 0 - gridHeight / 2
@@ -457,10 +426,9 @@ function workerCodeFunc() {
             visionGrid[i][j] = { x, y, threat: 555, type: "dangerous", lastUpdate: new Date() }
         }
     }
-        
-    function distance(a, b)
-    {
-        var distance = Math.sqrt((Math.pow(a.x-b.x,2))+(Math.pow(a.y-b.y,2)))
+
+    function distance(a, b) {
+        var distance = Math.sqrt((Math.pow(a.x - b.x, 2)) + (Math.pow(a.y - b.y, 2)))
         return distance;
     }
 
@@ -495,8 +463,8 @@ function workerCodeFunc() {
                     let x = gridLeft2 + spot.i * squareWidth2 - squareWidth2 / 2
                     let y = gridTop2 + spot.j * squareHeight2 - squareHeight2 / 2
                     let spotInfo = ComputerVision.getSpotInfo(x, y, e.data.monsters, e.data.nonTraversableEntities, e.data.c, e.data.optimalMonsterRange, e.data.optimalMonsterRangeBuffer, e.data.targetZoneLevel, e.data.targetId, e.data.nearMonsterUnsafeRadius)
-                    visionGrid[spot.i][spot.j] = { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() }
-                    yield { i: spot.i, j: spot.j, data: { x:x, y:y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
+                    visionGrid[spot.i][spot.j] = { x: x, y: y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() }
+                    yield { i: spot.i, j: spot.j, data: { x: x, y: y, threat: spotInfo.positionValue, type: spotInfo.type, lastUpdate: new Date() } }
                 }
                 fullGridProcessed = true
             }
@@ -518,8 +486,8 @@ function workerCodeFunc() {
             updates.push({ i: visionGridUpdate.i, j: visionGridUpdate.j, x, y, threat: visionGridUpdate.data.threat, type: visionGridUpdate.data.type, lastUpdate: new Date() });
         }
         self.postMessage(updates);
-    }, 
-    false);
+    },
+        false);
 }
 
 const stopWatchCode = `var Stopwatch = ${Stopwatch.toString()}`
@@ -540,7 +508,7 @@ let scaryMonsterRadius = ComputerVision.scaryMonsterRadius
 let terrainThickness = ComputerVision.terrainThickness
 let entityThickness = ComputerVision.entityThickness
 let targetZoneLevel = dw.getZoneLevel()//dw.c.level
-let nearMonsterUnsafeRadius = 2.2
+let nearMonsterUnsafeRadius = 2.5
 
 let visionGrid = new Array(gridArrWidth)
 let gridLeft = dw.c.x - gridWidth / 2
@@ -563,14 +531,14 @@ async function updateVisionGridOld() {
         gridUpdatePeriod: gridUpdatePeriod,
         monsters: dw.e.filter((e) => e.ai),
         nonTraversableEntities: getNonTraversableEntities(),
-        c:{ id:dw.c.id, x:dw.c.x, y:dw.c.y, skills:dw.c.skills, hp:dw.c.hp, hpMax:dw.c.hpMax, hpRegen:dw.c.hpRegen, mp:dw.c.mp, mpRegen:dw.c.mpRegen, combat:dw.c.combat},
+        c: { id: dw.c.id, x: dw.c.x, y: dw.c.y, skills: dw.c.skills, hp: dw.c.hp, hpMax: dw.c.hpMax, hpRegen: dw.c.hpRegen, mp: dw.c.mp, mpRegen: dw.c.mpRegen, combat: dw.c.combat },
         gridWidth: gridWidth,
         gridHeight: gridHeight,
         gridArrWidth: gridArrWidth,
         gridArrHeight: gridArrHeight,
         targetId: dw.targetId,
-        optimalMonsterRange:optimalMonsterRange,
-        optimalMonsterRangeBuffer:optimalMonsterRangeBuffer,
+        optimalMonsterRange: optimalMonsterRange,
+        optimalMonsterRangeBuffer: optimalMonsterRangeBuffer,
         targetZoneLevel: targetZoneLevel,
         nearMonsterUnsafeRadius: nearMonsterUnsafeRadius
     });
@@ -579,10 +547,10 @@ async function updateVisionGridOld() {
     updateVisionGridOld()
 }
 
-visionGridWorker.addEventListener('message', function(e) {
-  e.data.forEach(update => {
-    visionGrid[update.i][update.j] = { x: update.x, y: update.y, threat: update.threat, type: update.type, lastUpdate: update.lastUpdate };
-  });
+visionGridWorker.addEventListener('message', function (e) {
+    e.data.forEach(update => {
+        visionGrid[update.i][update.j] = { x: update.x, y: update.y, threat: update.threat, type: update.type, lastUpdate: update.lastUpdate };
+    });
 }, false);
 
 setTimeout(updateVisionGridOld, 100);
@@ -676,10 +644,10 @@ setInterval(function () {
         return
     }
 
-    let mpRequired = ComputerVision.getMpRequiredToDefeatMonster(target, dw.c, getBiome(dw.c.x, dw.c.y, dw.c.z))
+    let mpRequired = ComputerVision.getMpRequiredToDefeatMonster(target, dw.c)
     if (dw.c.mp < mpRequired)
         optimalMonsterRangeBuffer = 1
-    else if((dw.c.hp < dw.c.hpMax * 0.8) && dw.c.combat != 1)
+    else if ((dw.c.hp < dw.c.hpMax * 0.8) && dw.c.combat != 1)
         optimalMonsterRangeBuffer = 1
     else
         optimalMonsterRangeBuffer = -0.1
@@ -687,9 +655,9 @@ setInterval(function () {
 
 function getMonstersTargettingMeBattleScore() {
     let monstersTargettingMe = dw.findEntities(e => e.targetId && e.targetId == dw.c.id)
-    
+
     let monstersTargettingMeBattleScore = 0
-    if(monstersTargettingMe.length > 0) {
+    if (monstersTargettingMe.length > 0) {
         monstersTargettingMeBattleScore = monstersTargettingMe.map(e => ComputerVision.getMonsterBattleScore(e)).reduce((accumulator, currentValue) => accumulator + currentValue, monstersTargettingMeBattleScore)
     }
 
@@ -712,7 +680,7 @@ setInterval(function () {
 
     moveToSpot = moveToSpot ?? bestSpot
 
-    if(!moveToSpot) return
+    if (!moveToSpot) return
 
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
     let moveToSpotIsClose = dw.distance(moveToSpot ?? dw.c, dw.c) < 0.03
@@ -722,8 +690,7 @@ setInterval(function () {
     let isSpotSafe = ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c, dw.targetId)
     let targetIsGoo = target && target.md.toLowerCase().includes("goo") && dw.c.combat
 
-    if(targetIsGoo)
-    {
+    if (targetIsGoo) {
         isSpotSafe = isSpotSafe && ComputerVision.hasLineOfSafety(moveToSpot, dw.c, dw.e.filter(e => e.ai), dw.c, dw.targetId, e => e.md.toLowerCase().includes("goo") && e.id != dw.targetId)
     }
 
@@ -735,8 +702,9 @@ setInterval(function () {
         let goodSpots = getGoodSpots(50, true, true)
 
         // Clear the recent spot list if we are trapped under them
-        if(goodSpots.length == 0) {
+        if (goodSpots.length == 0) {
             console.log('resetting recent spots')
+            //targetZoneLevel += 3
             recentSpots = []
         }
 
@@ -760,15 +728,15 @@ setInterval(function () {
         }
     }
 
-    if(bestSpot) {
+    if (bestSpot) {
         lastMoveToSpotReset = new Date()
     }
 
     moveToSpot = bestSpot ?? moveToSpot
 }, moveUpdatePeriod)
 
-setInterval(function() {
-    recentSpots.push({x: dw.c.x, y:dw.c.y, r: recencyAvoidanceRadius})
+setInterval(function () {
+    recentSpots.push({ x: dw.c.x, y: dw.c.y, r: recencyAvoidanceRadius })
 }, 1000)
 
 function moveRecentSpotNearChunks(spot) {
@@ -776,33 +744,33 @@ function moveRecentSpotNearChunks(spot) {
 
     let nonTraversableEntities = getNonTraversableEntities()
     let closestConnection = nonTraversableEntities.filter(e => e.chunk)
-                                                 .sort((a,b) => dw.distance(a, spot) - dw.distance(b, spot))
-                                                 .shift()
+        .sort((a, b) => dw.distance(a, spot) - dw.distance(b, spot))
+        .shift()
 
-    if(closestConnection) {
+    if (closestConnection) {
         let dx = spot.x - closestConnection.x
         let dy = spot.y - closestConnection.y
 
         let len = dw.distance(closestConnection, spot)
 
-        dx *= 1/len
-        dy *= 1/len
+        dx *= 1 / len
+        dy *= 1 / len
 
-        if(isNaN(dx)) dx = 0
-        if(isNaN(dy)) dy = 0
+        if (isNaN(dx)) dx = 0
+        if (isNaN(dy)) dy = 0
 
-        let targetPos = {x:closestConnection.x + (dx * distConnection), y:closestConnection.y + (dy * distConnection)} 
+        let targetPos = { x: closestConnection.x + (dx * distConnection), y: closestConnection.y + (dy * distConnection) }
 
         dx = targetPos.x - spot.x
         dy = targetPos.y - spot.y
 
         len = dw.distance(targetPos, spot)
 
-        dx = Math.min(dx, dx * 1/len)
-        dy = Math.min(dy, dy * 1/len)
+        dx = Math.min(dx, dx * 1 / len)
+        dy = Math.min(dy, dy * 1 / len)
 
-        if(isNaN(dx)) dx = 0
-        if(isNaN(dy)) dy = 0
+        if (isNaN(dx)) dx = 0
+        if (isNaN(dy)) dy = 0
         spot.x += dx * 0.1
         spot.y += dy * 0.1
     }
@@ -811,30 +779,30 @@ function moveRecentSpotNearChunks(spot) {
 
 function resolveRecentSpotCollisions(spot) {
     let collisionSpots = recentSpots.filter(t => spot != t)
-                                    .filter(t => dw.distance(t, spot) < (t.r + spot.r) / 2) 
+        .filter(t => dw.distance(t, spot) < (t.r + spot.r) / 2)
 
-    let distplace = {x:0,y:0}
-    for(let closestConnection of collisionSpots) {
+    let distplace = { x: 0, y: 0 }
+    for (let closestConnection of collisionSpots) {
         let distConnection = (spot.r + closestConnection.r) / 2
-    
+
         let dx = spot.x - closestConnection.x
         let dy = spot.y - closestConnection.y
-    
+
         let len = dw.distance(closestConnection, spot)
-    
-        dx *= 1/len * distConnection
-        dy *= 1/len * distConnection
-    
-        if(isNaN(dx)) dx = 0
-        if(isNaN(dy)) dy = 0
-    
-        let targetPos = {x:closestConnection.x + dx, y:closestConnection.y + dy} 
-    
+
+        dx *= 1 / len * distConnection
+        dy *= 1 / len * distConnection
+
+        if (isNaN(dx)) dx = 0
+        if (isNaN(dy)) dy = 0
+
+        let targetPos = { x: closestConnection.x + dx, y: closestConnection.y + dy }
+
         dx = targetPos.x - spot.x
         dy = targetPos.y - spot.y
-    
-        if(isNaN(dx)) dx = 0
-        if(isNaN(dy)) dy = 0
+
+        if (isNaN(dx)) dx = 0
+        if (isNaN(dy)) dy = 0
         distplace.x += dx
         distplace.y += dy
     }
@@ -850,16 +818,15 @@ setInterval(function () {
     if (recentSpots.length == 0 || inRangeSpots.length == 0) {
         let dx = 0
         let dy = 0
-        recentSpots.push({ x: dw.c.x - dx * 1/5, y: dw.c.y - dy * 1/5, r: recencyAvoidanceRadius })
+        recentSpots.push({ x: dw.c.x - dx * 1 / 5, y: dw.c.y - dy * 1 / 5, r: recencyAvoidanceRadius })
     }
 
-    let connectToTargets = nonTraversableEntities
     let numUpdates = 0
-    for(let i = recentSpots.length - 1; i >= 0; --i) {
+    for (let i = recentSpots.length - 1; i >= 0; --i) {
         let currentSpot = recentSpots[i]
         currentSpot.r = Math.min(2.5, currentSpot.r *= 1.03)
 
-        if(numUpdates++ > 20) continue;
+        if (numUpdates++ > 20) continue;
 
         moveRecentSpotNearChunks(currentSpot)
         resolveRecentSpotCollisions(currentSpot)
@@ -874,7 +841,7 @@ setInterval(function () {
 
 function getSpotRecentlyUsed(x, y, notThisOne = null) {
     for (let recentSpot of recentSpots) {
-        if(recentSpot == notThisOne) continue
+        if (recentSpot == notThisOne) continue
         let distSpot = dw.distance({ x, y }, recentSpot)
         if (distSpot < recentSpot.r) {
             return true
@@ -914,7 +881,7 @@ setInterval(function () {
         return
     movingToSpot = movingToSpot ?? moveToSpot
 
-    if(dw.distance(moveToSpot, movingToSpot) > 11) movingToSpot = moveToSpot
+    if (dw.distance(moveToSpot, movingToSpot) > 11) movingToSpot = moveToSpot
 
     let dx = moveToSpot.x - movingToSpot.x
     let dy = moveToSpot.y - movingToSpot.y
@@ -927,30 +894,50 @@ setInterval(function () {
 }, movePeriod)
 
 // Attack stuff
+function findClosestMonsterTo(target) {
+    let closestMonster = null
+    let closestDist = 9999999999999
+    for (let e of dw.findEntities(e => e.ai && e.id != target.id)) {
+        let distMonster = dw.distance(e, target)
+        if (distMonster < closestDist) {
+            closestDist = distMonster
+            closestMonster = e
+        }
+    }
+
+    return closestMonster
+}
+
 cache.set(`${dw.c.name}_skipAttacks`, cache.get(`${dw.c.name}_skipAttacks`) ?? false)
 setInterval(function () {
     let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-    if(!dw.c.combat && target && !ComputerVision.isValidTarget(target, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel)) {
+    if (!dw.c.combat && target && !ComputerVision.isValidTarget(target, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, dw.targetId)) {
         dw.setTarget(0)
         return
     }
-    
-    if (cache.get(`${dw.c.name}_skipAttacks`) == true)
-    {
-        return 
-    }
 
-    target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel))
-
-    if (!target)
-    {
+    if (cache.get(`${dw.c.name}_skipAttacks`) == true) {
         return
     }
-    
-    dw.setTarget(target.id)
+
+    target = dw.findClosestMonster((m) => ComputerVision.isValidTarget(m, getNonTraversableEntities(), dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius))
+
+    if (!target) {
+        return
+    }
+
+    let closest = findClosestMonsterTo(target)
+    let distClosest = closest ? dw.distance(closest, target) : 99
+    if (!dw.c.combat && target) {
+        if (distClosest < nearMonsterUnsafeRadius) {
+            return
+        }
+    }
+
     let distTarget = dw.distance(target, dw.c)
+    dw.setTarget(target.id)
     let skillUse = ComputerVision.getBestSkill(distTarget, dw.c, target)
- 
+
     // No good skills to use
     if (!skillUse || skillUse === undefined) {
         return
@@ -963,16 +950,13 @@ setInterval(function () {
         return
     }
 
-    if(dw.distance(target, dw.c) > optimalMonsterRange) return
+    if (dw.distance(target, dw.c) > optimalMonsterRange) return
 
-    if(skillUse.fx.bomb && target.fx.bomb)
-    {
+    if (skillUse.fx.bomb && target.fx.bomb) {
         return
     }
 
-    if(isSkillReady)
-    {
-        console.log('using skill', skillUse.md, skillUse.skillBagIndex)
+    if (isSkillReady) {
         dw.useSkill(skillUse.skillBagIndex, target.id)
     }
 }, 20)
@@ -1028,7 +1012,7 @@ function getGridStyle(type, alpha) {
 }
 dw.on("drawEnd", (ctx, cx, cy) => {
 
-    if(noRender) return
+    if (noRender) return
 
     let camOffsetX = Math.round(cx * 96 - Math.floor(ctx.canvas.width / 2))
     let camOffsetY = Math.round(cy * 96 - Math.floor(ctx.canvas.height / 2))
@@ -1063,16 +1047,16 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         drawLineToPOI(ctx, cx, cy, moveToSpot, `rgb(0, 255, 0, 0.9`)
         drawLineToPOI(ctx, cx, cy, movingToSpot, `rgb(231, 0, 255, 0.9)`)
     }
-    drawLineToPOI(ctx, cx, cy, target, `rgb(245, 239, 66, 0.9)`, {x:dw.c.x, y:dw.c.y - 0.5})
+    drawLineToPOI(ctx, cx, cy, target, `rgb(245, 239, 66, 0.9)`, { x: dw.c.x, y: dw.c.y - 0.5 })
 
     let monstersTargettingMe = dw.findEntities(e => e.targetId && e.targetId == dw.c.id)
-    for(var monster of monstersTargettingMe) {
-        drawLineToPOI(ctx, cx,cy, dw.c, 'white', {x:monster.x, y:monster.y - 0.5})
+    for (var monster of monstersTargettingMe) {
+        drawLineToPOI(ctx, cx, cy, dw.c, 'white', { x: monster.x, y: monster.y - 0.5 })
     }
 })
 dw.on("drawEnd", (ctx, cx, cy) => {
 
-    if(noRender) return
+    if (noRender) return
 
     ctx.strokeStyle = "green"
     ctx.fillStyle = "white"
@@ -1087,7 +1071,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         let smoothPos = monster.id in entititiesSmoothPosMap ? entititiesSmoothPosMap[monster.id] : monster
         let x2 = smoothPos.x * 96 - camOffsetX
         let y2 = smoothPos.y * 96 - camOffsetY - 110
-        
+
         let squareWidth2 = gridWidth / gridArrWidth * 96
         let squareHeight2 = gridHeight / gridArrHeight * 96
         if (x2 < -1 * squareWidth2 || x2 > ctx.canvas.width || y2 < -1 * squareHeight2 || y2 > ctx.canvas.height)
@@ -1134,7 +1118,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
         ctx.fillStyle = "white"
         if (battleScore < myBattleScore * 0.7) {
             ctx.fillStyle = "white"
-        } else if (ComputerVision.isValidTarget(monster, nonTraversableEntities, dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, getBiome(dw.c.x, dw.c.y, dw.c.z))) {
+        } else if (ComputerVision.isValidTarget(monster, nonTraversableEntities, dw.c, dw.e, targetZoneLevel, nearMonsterUnsafeRadius, dw.targetId)) {
             ctx.strokeStyle = "orange"
         } else {
             ctx.strokeStyle = "red"
@@ -1258,10 +1242,9 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 })
 dw.on("drawEnd", (ctx, cx, cy) => {
 
-    if(noRender) return
+    if (noRender) return
 
-    for(let m of dw.findEntities(e => e.ai))
-    {
+    for (let m of dw.findEntities(e => e.ai)) {
         drawLineToPOI(ctx, cx, cy, { x: m.x + m.dx, y: m.y + m.dy }, "black", m)
     }
 })
@@ -1269,7 +1252,7 @@ dw.on("drawEnd", (ctx, cx, cy) => {
 let lastTextUpdate = new Date()
 dw.on("drawEnd", (ctx, cx, cy) => {
 
-    if(noRender) return
+    if (noRender) return
 
     ctx.strokeStyle = "green"
     ctx.fillStyle = "white"
@@ -1372,7 +1355,7 @@ function drawLineToPOI(ctx, cx, cy, target, style, from = dw.c) {
 function clearMenuButtons() {
     let tempButtons = window.top.document.getElementsByClassName('temp-btn')
 
-    while(tempButtons.length > 0) {
+    while (tempButtons.length > 0) {
         tempButtons[0].remove()
     }
 
@@ -1380,9 +1363,9 @@ function clearMenuButtons() {
     window.top.document.getElementById('menuButtonsContextMenu')?.remove()
 }
 
-function addMenuButton(title, onclick, parentDiv = window.top.document.getElementById('menuButtons')){ 
+function addMenuButton(title, onclick, parentDiv = window.top.document.getElementById('menuButtons')) {
     var newi = window.top.document.createElement('i')
-    newi.class='fa-solid'
+    newi.class = 'fa-solid'
     newi.innerText = title
 
     newi.onclick = () => onclick(newi)
@@ -1400,11 +1383,11 @@ function addMenuButton(title, onclick, parentDiv = window.top.document.getElemen
 
 function addMenuButtonContextMenu() {
     let menuButtons = window.top.document.getElementById('menuButtons')
-    let menuButtonsContextMenu  = window.top.document.createElement('div')
-    
-    menuButtonsContextMenu.className="ui ui-content invisible"
-    menuButtonsContextMenu.style="position:absolute;bottom:50px;right:5px;"
-    menuButtonsContextMenu.id='menuButtonsContextMenu'
+    let menuButtonsContextMenu = window.top.document.createElement('div')
+
+    menuButtonsContextMenu.className = "ui ui-content invisible"
+    menuButtonsContextMenu.style = "position:absolute;bottom:50px;right:5px;"
+    menuButtonsContextMenu.id = 'menuButtonsContextMenu'
 
     menuButtons.appendChild(menuButtonsContextMenu)
 
@@ -1412,7 +1395,7 @@ function addMenuButtonContextMenu() {
 
 function toggleMenuButtonContextMenu() {
     let menuButtonsContextMenu = window.top.document.getElementById('menuButtonsContextMenu')
-    if(menuButtonsContextMenu.className.includes('invisible')) {
+    if (menuButtonsContextMenu.className.includes('invisible')) {
         menuButtonsContextMenu.classList.remove('invisible')
     }
     else {
@@ -1433,46 +1416,26 @@ addMenuButtonContextMenu()
 addMenuButton('⚙️', e => {
     toggleMenuButtonContextMenu()
 })
-addMenuContextMenuButton(cache.get(`${dw.c.name}_manualmove`) ? 'Manual' : 'Auto', (e) => { 
+addMenuContextMenuButton(cache.get(`${dw.c.name}_manualmove`) ? 'Manual' : 'Auto', (e) => {
     let manualMove = !cache.get(`${dw.c.name}_manualmove`)
-    if(manualMove)
-    {
+    if (manualMove) {
         e.innerText = 'Manual'
     }
-    else
-    {
+    else {
         e.innerText = 'Auto'
     }
     cache.set(`${dw.c.name}_manualmove`, manualMove)
 })
-addMenuContextMenuButton(cache.get(`showComputerVision`) ? 'VFX 🐵' : 'VFX 🙈', (e) => { 
+addMenuContextMenuButton(cache.get(`showComputerVision`) ? 'VFX 🐵' : 'VFX 🙈', (e) => {
     let showComputerVision = !cache.get(`showComputerVision`)
-    if(showComputerVision)
-    {
+    if (showComputerVision) {
         e.innerText = 'VFX 🐵'
     }
-    else
-    {
+    else {
         e.innerText = 'VFX 🙈'
     }
     cache.set(`showComputerVision`, showComputerVision)
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
