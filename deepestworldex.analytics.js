@@ -1,96 +1,3 @@
-// Skill and damage calcuation
-function getBestSkill(targetDistance) {
-    let bestSkill = null
-    let mostDamage = 0
-    for (let skill of dw.c.skills) {
-        if (skill.range < targetDistance) {
-            continue
-        }
-        let skillDamage = getSkillDamage(skill)
-        if (mostDamage < skillDamage) {
-            mostDamage = skillDamage
-            bestSkill = skill
-        }
-    }
-    return bestSkill
-}
-
-function getSkillDamage(skill) {
-    if (!skill)
-        return 0
-    let skillDmg = skill.acidDmg + skill.coldDmg + skill.fireDmg + skill.elecDmg + skill.physDmg
-    return skillDmg ?? 0
-}
-
-let eleNameTypes = ["fire", "elec", "cold", "acid"]
-let eleNameTypesRegex = new RegExp(eleNameTypes.join("|"), "i")
-
-function getMonsterBattleScore(monster, useFullHp = false) {
-    // Without a better damage calculation method let's give elemental monsters a scarier battle score
-    // assuming we are going to be weaker against ele dmg than phys
-    let isEle = eleNameTypesRegex.test(monster.md) || monster.terrain != 1
-    return (useFullHp ? monster.hpMax : monster.hp) * getMonsterDmg(monster) * (isEle ? 1.3 : 1)
-}
-
-function getMonsterDmg(monster) {
-    let dmg = 19 * Math.pow(1.1, monster.level)
-    if (monster.r ?? 0 > 1) {
-        dmg *= 1 + monster.r * 0.5
-    }
-    return dmg
-}
-
-function getMyDmg() {
-    let mySkillInfo = getBestSkill(0) ?? dw.c.skills.filter((s) => s.md).shift()
-    return getSkillDamage(mySkillInfo)
-}
-
-function getMaxDamageDealtBeforeOom() {
-    let target = dw.findEntities((entity) => entity.id === dw.targetId).shift()
-
-    if (!target) return Number.MAX_SAFE_INTEGER
-
-    let myBestSkill = getBestSkill(dw.distance(target, dw.c))
-    let mySkillInfo = myBestSkill ?? dw.c.skills.filter((s) => s.md).shift()
-
-    if (dw.c.mpRegen > mySkillInfo.cost) return Number.MAX_SAFE_INTEGER
-
-    if(dw.c.mp < mySkillInfo.cost) return 0
-
-    let timeToOom = dw.c.mp / (mySkillInfo.cost - dw.c.mpRegen)
-    let myDmg = getMyDmg()
-
-    let maxPossibleDmg = timeToOom * myDmg
-    return maxPossibleDmg
-}
-
-function getMyBattleScore(useMaxHp = false) {
-    let hpScorePart = (useMaxHp ? dw.c.hpMax : dw.c.hp)
-
-    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = getMyDmg() * hpScorePart  + 800
-    let maxTargetLife = getMaxDamageDealtBeforeOom()
-    let maxDmgScore = maxTargetLife * getMyDmg()
-    let dmgScorePart = Math.min(maxDmgScore, potentialScore)
-    let battleScore = dmgScorePart
-
-    if(isNaN(battleScore)) battleScore = 0
-
-    return battleScore
-}
-
-function getMyMaximumBattleScore() {
-    // +800 is arbitrary to make the bots more likely to attack at spawn but has a negligible effect as the character gets stronger
-    let potentialScore = (getMyDmg() * dw.c.hpMax) + 800
-
-    if(isNaN(potentialScore)) potentialScore = 0
-
-    return potentialScore
-}
-
-
-
-
 // Analytics
 class DWAnalytics {
     constructor(character, apiBaseUrl, dw) {
@@ -199,11 +106,7 @@ class DWAnalytics {
         }
 
         if (hit.rip && hit.target == dw.c.id) {
-
-            let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
-            let myBattleScore = Math.trunc(getMyMaximumBattleScore())
-
-            let deathDescription = `${myBattleScore} vs ${monsterBattleScore}`
+            let deathDescription = 'dead'
 
             let monstersTargettingMe = dw.findEntities(e => e.targetId && e.targetId == this.dw.c.id)
 
@@ -217,10 +120,7 @@ class DWAnalytics {
             this.dw.setTarget(null)
 
         } else if (hit.rip && hit.actor == this.dw.c.id) {
-            let myBattleScore = Math.trunc(getMyMaximumBattleScore())
-
-            let monsterBattleScore = Math.trunc(getMonsterBattleScore(target, true))
-            dwa.onKill(target.md, target.level ?? 0, target.r ?? 0, `${myBattleScore} vs ${monsterBattleScore}`)
+            dwa.onKill(target.md, target.level ?? 0, target.r ?? 0, 'kill')
         }
     }
 
