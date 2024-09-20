@@ -31,7 +31,6 @@ class DWAnalytics {
 
         dw.on("hit", (data) => {
             for (let hit of data) {
-                console.log('on hit', hit)
                 if (!hit.dmg)
                     continue;
                 this.processHitEventAnalytics(hit)
@@ -70,8 +69,6 @@ class DWAnalytics {
     }
 
     processHitEventAnalytics(hit) {
-        console.log('processHitEventAnalytics', hit)
-
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
         let actor = dw.findEntities((entity) => entity.id === hit.actor).shift()
         if (!hit.dmg) {
