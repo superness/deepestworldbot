@@ -31,7 +31,8 @@ class DWAnalytics {
 
         dw.on("hit", (data) => {
             for (let hit of data) {
-                if (!hit.amount)
+                console.log('on hit', hit)
+                if (!hit.dmg)
                     continue;
                 this.processHitEventAnalytics(hit)
             }
@@ -69,9 +70,11 @@ class DWAnalytics {
     }
 
     processHitEventAnalytics(hit) {
+        console.log('processHitEventAnalytics', hit)
+
         let target = dw.findEntities((entity) => entity.id === hit.target).shift()
         let actor = dw.findEntities((entity) => entity.id === hit.actor).shift()
-        if (!hit.amount) {
+        if (!hit.dmg) {
             return
         }
 
@@ -87,8 +90,8 @@ class DWAnalytics {
             this.combatLog.push({
                 characterId: this.getDBId(),
                 monsterName: monster?.md ?? "NULL",
-                damage: hit.amount,
-                description: `lvl ${hitSource.level} ${hitSource.md} [${hitSource.hp}/${hitSource.maxHp}] attacking lvl ${hitDest.level} ${hitDest.md} [${hitDest.hp}/${hitDest.maxHp}] for ${hit.amount} with ${hit.md ?? 'attack'}`,
+                damage: hit.dmg,
+                description: `lvl ${hitSource.level} ${hitSource.md} [${hitSource.hp}/${hitSource.maxHp}] attacking lvl ${hitDest.level} ${hitDest.md} [${hitDest.hp}/${hitDest.maxHp}] for ${hit.dmg} with ${hit.md ?? 'attack'}`,
                 isCharacterHit: isCharacterHit,
                 skillUsed: (hit.md ?? "attack"),
                 when: new Date(),
