@@ -132,7 +132,7 @@ class DWAnalytics {
     }
 
     getDBIdKey() {
-        return `${this.character.name}_${this.character.charDbId}_DWAnalyticsID`
+        return `${this.character.name}_${this.character.cid}_DWAnalyticsID`
     }
 
     getDBId() {
